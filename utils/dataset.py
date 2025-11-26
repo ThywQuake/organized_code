@@ -144,7 +144,7 @@ class WetlandDataset(Dataset):
 
     def create_windows(self):
         windows = []
-        dates = []
+        dates_seq = []
         features = self.features
         target = self.target
         date = self.dates
@@ -158,9 +158,9 @@ class WetlandDataset(Dataset):
             target_window = target[i + self.seq_length - 1]
             window_date = date[i + self.seq_length - 1]
             windows.append((feature_window, target_window))
-            dates.append(window_date)
+            dates_seq.append(window_date)
 
-        return windows, dates
+        return windows, dates_seq
 
     def __len__(self):
         return len(self.windows)
