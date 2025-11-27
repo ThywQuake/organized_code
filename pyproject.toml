@@ -18,3 +18,8 @@ dependencies = [
     "torchvision>=0.24.1",
     "xarray>=2025.11.0",
 ]
+
+[dependency-groups]
+dev = [
+    "pre-commit>=4.5.0",
+]

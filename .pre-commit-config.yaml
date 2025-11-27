@@ -1,0 +1,21 @@
+# .pre-commit-config.yaml
+
+repos:
+  # 1. 基础检查（Git 官方提供的常用钩子）
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace   # 删除行尾多余的空格
+      - id: end-of-file-fixer     # 确保文件最后有一行空行
+      - id: check-yaml            # 检查 .yaml 文件格式是否正确
+      - id: check-toml            # 检查 .toml 文件格式 (您用的配置文件)
+      - id: check-added-large-files # 【重要】防止误提交大文件（如 >500KB 的 .pth/.nc）
+        args: ['--maxkb=1000']
+
+  # 2. Ruff (最快的 Python linter 和 formatter，替代 Black/Flake8/Isort)
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.3.4
+    hooks:
+      - id: ruff                  # 检查代码规范 (Lint)
+        args: [ --fix ]           # 自动修复简单问题
+      - id: ruff-format           # 格式化代码 (Format)
