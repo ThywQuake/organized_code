@@ -1,0 +1,70 @@
+[sys_mode]
+debug = true 
+cover_exist = true
+train_tasks_per_thread = 10
+predict_tasks_per_thread = 10
+
+[folder]
+model = "output/model/E"
+eval = "output/eval/E"
+pred = "output/pred/E"
+
+[dataset]
+
+# TVARs (Time Series Variables)
+[[dataset.TVARs]]
+name = "giems2"
+path = "data/clean/GIEMS-MC_fwet.nc"
+variable = "fwet"
+
+[[dataset.TVARs]]
+name = "era5"
+path = "data/clean/ERA5_tmp.nc"
+variable = "tmp"
+
+[[dataset.TVARs]]
+name = "mswep"
+path = "data/clean/MSWEP_pre.nc"
+variable = "pre"
+
+[[dataset.TVARs]]
+name = "gleam"
+path = "data/clean/GLEAM4a_sm.nc"
+variable = "sm"
+
+[[dataset.TVARs]]
+name = "grace"
+path = "data/clean/GRACE_lwe_thickness.nc"
+variable = "lwe_thickness"
+
+# CVARs (Constant Variables)
+[[dataset.CVARs]]
+name = "fcti"
+path = "data/clean/fcti.nc"
+variable = "fcti"
+
+# Mask Variable
+[dataset.mask]
+path = "data/wetland_mask.nc"
+variable = "mask"
+total = 70042
+
+[model]
+hidden_dim = 384
+n_layers = 2
+batch_size = 16
+seq_length = 12
+window_size = 9
+
+[train]
+start_date = "1992-01-01"
+end_date = "2020-12-31"
+train_years = [1992,1993,1994,2003,2004,2005,2007,2008,2009,2010,2011,2012,2013,2014,2018,2019]
+lr = 0.0005
+n_epochs = 150
+patience = 50
+verbose_epoch = 100
+
+[predict]
+start_date = "1984-01-01"
+end_date = "2023-12-01"
