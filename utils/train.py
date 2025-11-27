@@ -167,7 +167,7 @@ class Train:
 
         self.model.zero_grad()
         outputs, h = self.model(inputs, h)
-        loss = self.criterion(outputs, targets.squeeze())
+        loss = self.criterion(outputs, targets.to(self.device).float())
         loss.backward()
         clip_grad_norm_(self.model.parameters(), max_norm=1.0)
         self.optimizer.step()
@@ -185,7 +185,7 @@ class Train:
             h = h.data
 
         outputs, h = self.model(inputs, h)
-        loss = self.criterion(outputs, targets.squeeze())
+        loss = self.criterion(outputs, targets.to(self.device).float())
 
         return loss
 
