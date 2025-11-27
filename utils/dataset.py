@@ -91,14 +91,13 @@ class WetlandDataset(Dataset):
             raw = raw.reshape(len(self.dates), -1)
             return raw
 
-
         features = {
             name: extract_window(self.TVARs[name], T=True) for name in self.TVARs
         }
         features.update(
             {name: extract_window(self.CVARs[name], T=False) for name in self.CVARs}
         )
-          
+
         giems2_center = (
             self.giems2.isel(lat=lat, lon=lon)
             .sel(time=slice(self.start_date, self.end_date))
@@ -140,12 +139,11 @@ class WetlandDataset(Dataset):
             )
         else:
             target_scaler = MinMaxScaler()
-            target_scaler.fit(target_values[valid_mask].reshape(-1, 1)) 
+            target_scaler.fit(target_values[valid_mask].reshape(-1, 1))
             target_scaled[valid_mask] = target_scaler.transform(
                 target_values[valid_mask].reshape(-1, 1)
             )
             self.target_scaler = target_scaler
-            
 
         self.features = np.hstack(list(feature_scaled.values()))
         self.target = target_scaled

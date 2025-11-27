@@ -4,8 +4,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-
-
 class KANLinear(nn.Module):
     # KAN层，在全连接这一步用
     def __init__(
@@ -180,7 +178,9 @@ class KANLinear(nn.Module):
 
 
 class GRUNet(nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim, n_layers, device, drop_prob=0.2):
+    def __init__(
+        self, input_dim, hidden_dim, output_dim, n_layers, device, drop_prob=0.2
+    ):
         super(GRUNet, self).__init__()
         self.hidden_dim = hidden_dim
         self.n_layers = n_layers
@@ -205,13 +205,17 @@ class GRUNet(nn.Module):
         # Initialze h_0 with zeros
         weight = next(self.parameters()).data
         hidden = (
-            weight.new(self.n_layers, batch_size, self.hidden_dim).zero_().to(self.device)
+            weight.new(self.n_layers, batch_size, self.hidden_dim)
+            .zero_()
+            .to(self.device)
         )
         return hidden
 
 
 class GRUNetKAN(nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim, n_layers, device, drop_prob=0.2):
+    def __init__(
+        self, input_dim, hidden_dim, output_dim, n_layers, device, drop_prob=0.2
+    ):
         super(GRUNetKAN, self).__init__()
         self.hidden_dim = hidden_dim
         self.n_layers = n_layers
@@ -221,7 +225,7 @@ class GRUNetKAN(nn.Module):
         )
         self.fc = KANLinear(hidden_dim, output_dim)
         self.relu = nn.ReLU()
-        
+
         self.device = device
 
     def forward(self, x, h):
@@ -237,7 +241,9 @@ class GRUNetKAN(nn.Module):
         # Initialze h_0 with zeros
         weight = next(self.parameters()).data
         hidden = (
-            weight.new(self.n_layers, batch_size, self.hidden_dim).zero_().to(self.device)
+            weight.new(self.n_layers, batch_size, self.hidden_dim)
+            .zero_()
+            .to(self.device)
         )
         return hidden
 
@@ -267,13 +273,17 @@ class LSTMNet(nn.Module):
             weight.new(self.n_layers, batch_size, self.hidden_dim)
             .zero_()
             .to(self.device),  # h_0
-            weight.new(self.n_layers, batch_size, self.hidden_dim).zero_().to(self.device),
+            weight.new(self.n_layers, batch_size, self.hidden_dim)
+            .zero_()
+            .to(self.device),
         )
         return hidden
 
 
 class LSTMNetKAN(nn.Module):
-    def __init__(self, input_dim, hidden_dim, output_dim, n_layers, device, drop_prob=0.2):
+    def __init__(
+        self, input_dim, hidden_dim, output_dim, n_layers, device, drop_prob=0.2
+    ):
         super(LSTMNetKAN, self).__init__()
         self.hidden_dim = hidden_dim
         self.n_layers = n_layers
@@ -283,7 +293,7 @@ class LSTMNetKAN(nn.Module):
         ).to(device)
         self.fc = KANLinear(hidden_dim, output_dim).to(device)
         self.relu = nn.ReLU().to(device)
-        
+
         self.device = device
 
     def forward(self, x, h):
@@ -299,6 +309,8 @@ class LSTMNetKAN(nn.Module):
             weight.new(self.n_layers, batch_size, self.hidden_dim)
             .zero_()
             .to(self.device),  # h_0
-            weight.new(self.n_layers, batch_size, self.hidden_dim).zero_().to(self.device),
+            weight.new(self.n_layers, batch_size, self.hidden_dim)
+            .zero_()
+            .to(self.device),
         )
         return hidden

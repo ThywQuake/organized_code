@@ -18,7 +18,9 @@ print("Loading data...")
 config = Config(config_path="config/E_debug.toml", mode="predict")
 TVARs = config.TVARs
 CVARs = config.CVARs
-INPUT_DIM = (len(TVARs) + len(CVARs) - 1) * (config.window_size**2) + 1  # Remove GIEMS-MC and Add potential GIEMS-MC
+INPUT_DIM = (len(TVARs) + len(CVARs) - 1) * (
+    config.window_size**2
+) + 1  # Remove GIEMS-MC and Add potential GIEMS-MC
 mask = config.mask
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
@@ -107,7 +109,7 @@ def process_location(args):
             predict=False,
         )
         target_scaler = train_dataset.target_scaler
-        feature_scalers = train_dataset.feature_scalers 
+        feature_scalers = train_dataset.feature_scalers
         dataset = WetlandDataset(
             TVARs=TVARs_copy.copy(),  # 注意：这里使用传入的副本
             CVARs=CVARs_copy,

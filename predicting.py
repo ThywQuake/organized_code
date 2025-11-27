@@ -81,7 +81,7 @@ for lat_idx in range(mask.shape[0]):
         )
         target_scaler = train_dataset.target_scaler
         feature_scalers = train_dataset.feature_scalers
-        
+
         dataset = WetlandDataset(
             TVARs=TVARs.copy(),
             CVARs=CVARs,
@@ -125,5 +125,4 @@ for lat_idx in range(mask.shape[0]):
         pred.run()
     else:
         continue
-    break    
-    
+    break

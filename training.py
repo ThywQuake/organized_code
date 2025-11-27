@@ -16,7 +16,7 @@ warnings.filterwarnings("ignore")
 """============================= Configs ======================================="""
 
 print("Loading data...")
-config = Config(config_path="config/E.toml", mode="train")
+config = Config(config_path="config/E_debug.toml", mode="train")
 TVARs = config.TVARs
 CVARs = config.CVARs
 mask = config.mask
@@ -120,7 +120,9 @@ for lat_idx in range(mask.shape[0]):
         print("Finished all assigned tasks.")
         break
 
-input_dim = (len(TVARs) + len(CVARs) - 1) * (window_size**2) + 1 # Remove GIEMS-MC and Add potential GIEMS-MC
+input_dim = (len(TVARs) + len(CVARs) - 1) * (
+    window_size**2
+) + 1  # Remove GIEMS-MC and Add potential GIEMS-MC
 model = LSTMNetKAN(
     input_dim=input_dim,
     hidden_dim=hidden_dim,

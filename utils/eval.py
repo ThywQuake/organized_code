@@ -46,14 +46,17 @@ class Eval:
         self.scaler = target_scaler
         self.device = device
 
-
     def run(self):
         if not os.path.exists(self.eval_folder):
             os.makedirs(self.eval_folder)
 
-        model_path = os.path.join(self.model_folder, f"{self.lat_idx}_{self.lon_idx}.pth")
+        model_path = os.path.join(
+            self.model_folder, f"{self.lat_idx}_{self.lon_idx}.pth"
+        )
         if not os.path.exists(model_path):
-            print(f"Model for location ({self.lat_idx}, {self.lon_idx}) not found. Skipping.")
+            print(
+                f"Model for location ({self.lat_idx}, {self.lon_idx}) not found. Skipping."
+            )
             return
         print(f"Processing location ({self.lat_idx}, {self.lon_idx})...")
 

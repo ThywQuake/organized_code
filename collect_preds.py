@@ -12,7 +12,14 @@ out_file = "output/pred_E.nc"
 
 
 dates = pd.date_range(start=start_date, end=end_date, freq="MS")
-zeros = np.full((len(dates), mask["mask"].shape[0], mask["mask"].shape[1], ), np.nan)
+zeros = np.full(
+    (
+        len(dates),
+        mask["mask"].shape[0],
+        mask["mask"].shape[1],
+    ),
+    np.nan,
+)
 for lat_idx in range(mask["mask"].shape[0]):
     for lon_idx in range(mask["mask"].shape[1]):
         if not mask["mask"].values[lat_idx, lon_idx]:
@@ -24,16 +31,15 @@ for lat_idx in range(mask["mask"].shape[0]):
         data = np.load(npy_path, allow_pickle=True).item()
         preds = data["prediction"]
         zeros[lat_idx, lon_idx, :] = preds
-        
+
 preds = xr.DataArray(
-    data = zeros,
-    dims = ["time", "lat", "lon"],
-    coords = {        
+    data=zeros,
+    dims=["time", "lat", "lon"],
+    coords={
         "time": dates,
         "lat": mask["lat"].values,
         "lon": mask["lon"].values,
-
     },
-    name = "fwet"
+    name="fwet",
 )
 preds.to_netcdf(out_file)
