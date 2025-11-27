@@ -58,6 +58,8 @@ class Config:
         prediction_cfg = self.config['predict']
         self.start_date = prediction_cfg['start_date']
         self.end_date = prediction_cfg['end_date']
+        self.train_start_date = self.config['train']['start_date']
+        self.train_end_date = self.config['train']['end_date']
         
     def load_sys_mode_config(self):
         sys_mode_cfg = self.config['sys_mode']

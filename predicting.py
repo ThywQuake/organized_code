@@ -4,7 +4,7 @@ import torch
 
 from utils.model import LSTMNetKAN
 from utils.dataset import WetlandDataset
-from utils.pred import Predict
+from utils.predict import Predict
 from utils.config import Config
 
 import warnings
@@ -68,7 +68,20 @@ for lat_idx in range(mask.shape[0]):
                 f"Predictions for location ({lat_idx}, {lon_idx}) already exist. Skipping..."
             )
             continue
-
+        train_dataset = WetlandDataset(
+            TVARs=TVARs.copy(),
+            CVARs=CVARs,
+            lat_idx=lat_idx,
+            lon_idx=lon_idx,
+            seq_length=seq_length,
+            window_size=window_size,
+            start_date=config.train_start_date,
+            end_date=config.train_end_date,
+            predict=False,
+        )
+        target_scaler = train_dataset.target_scaler
+        feature_scalers = train_dataset.feature_scalers
+        
         dataset = WetlandDataset(
             TVARs=TVARs.copy(),
             CVARs=CVARs,
@@ -79,6 +92,8 @@ for lat_idx in range(mask.shape[0]):
             start_date=start_date,
             end_date=end_date,
             predict=True,
+            target_scaler=target_scaler,
+            feature_scalers=feature_scalers,
         )
         input_dim = (len(TVARs) + len(CVARs) - 1) * (window_size**2) + 1
 

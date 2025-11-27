@@ -14,7 +14,8 @@ class WetlandDataset(Dataset):
         TVARs: dict[str, xr.DataArray],
         CVARs: dict[str, xr.DataArray],
         seq_length: int = 12,
-        scaler: Optional[MinMaxScaler] = None,
+        target_scaler: Optional[MinMaxScaler] = None,
+        feature_scalers: Optional[dict[str, MinMaxScaler]] = None,
         window_size: int = 9,
         start_date: str = "1992-01-01",
         end_date: str = "2020-12-01",
@@ -27,7 +28,8 @@ class WetlandDataset(Dataset):
             TVARs: Dictionary of xarray DataArrays **with time series** for each variable
             CVARs: Dictionary of xarray DataArrays **without time series** for each variable
             seq_length: Length of the input sequence for each sample
-            scaler: Optional pre-fitted MinMaxScaler for the target variable
+            target_scaler: Optional pre-fitted MinMaxScaler for the target variable
+            feature_scalers: Optional pre-fitted MinMaxScaler for the feature variables
             window_size: Size of the spatial window (must be odd)
             start_date: Start date for data selection (YYYY-MM-DD)
             end_date: End date for data selection (YYYY-MM-DD)
@@ -37,7 +39,8 @@ class WetlandDataset(Dataset):
 
         self.lat_idx, self.lon_idx = lat_idx, lon_idx
         self.seq_length, self.window_size = seq_length, window_size
-        self.scaler = scaler
+        self.target_scaler = target_scaler
+        self.feature_scalers = feature_scalers
 
         self.giems2 = TVARs.pop("giems2")
         self.TVARs, self.CVARs = TVARs, CVARs
@@ -110,30 +113,42 @@ class WetlandDataset(Dataset):
 
     def normalize_data(self):
         # Feature scalers
-        feature_scalers = {}
         feature_scaled = {}
-        for name, data in self.features.items():
-            scaler_group = MinMaxScaler()
-            scaled_data = scaler_group.fit_transform(data)
-            feature_scaled[name] = scaled_data
-            feature_scalers[name] = scaler_group
+        if self.feature_scalers:
+            for name, data in self.features.items():
+                scaler_group = self.feature_scalers[name]
+                scaled_data = scaler_group.transform(data)
+                feature_scaled[name] = scaled_data
+        else:
+            feature_scalers = {}
+            for name, data in self.features.items():
+                scaler_group = MinMaxScaler()
+                scaled_data = scaler_group.fit_transform(data)
+                feature_scaled[name] = scaled_data
+                feature_scalers[name] = scaler_group
+            self.feature_scalers = feature_scalers
 
         # Target scaler (kept in self.scaler for downstream inverse_transform)
         # Handle NaNs in target: fit on non-NaN targets, keep NaNs as NaN after transform
-        target_scaler = self.scaler if self.scaler else MinMaxScaler()
         target_values = self.target.reshape(-1, 1)
         valid_mask = ~np.isnan(target_values.flatten())
-        target_scaler.fit(target_values[valid_mask].reshape(-1, 1))
         target_scaled = target_values.copy()
-        target_scaled[valid_mask] = target_scaler.transform(
-            target_values[valid_mask].reshape(-1, 1)
-        )
         # keep NaNs where original targets were NaN
+        if self.target_scaler:
+            target_scaled[valid_mask] = self.target_scaler.transform(
+                target_values[valid_mask].reshape(-1, 1)
+            )
+        else:
+            target_scaler = MinMaxScaler()
+            target_scaler.fit(target_values[valid_mask].reshape(-1, 1)) 
+            target_scaled[valid_mask] = target_scaler.transform(
+                target_values[valid_mask].reshape(-1, 1)
+            )
+            self.target_scaler = target_scaler
+            
 
         self.features = np.hstack(list(feature_scaled.values()))
         self.target = target_scaled
-        self.target_scaler = target_scaler
-        self.feature_scalers = feature_scalers
 
     def create_windows(self):
         windows = []

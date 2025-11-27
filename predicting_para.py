@@ -5,7 +5,7 @@ import multiprocessing  # 导入 multiprocessing 库
 
 from utils.model import LSTMNetKAN
 from utils.dataset import WetlandDataset
-from utils.pred import Predict
+from utils.predict import Predict
 from utils.config import Config
 
 import warnings
@@ -43,6 +43,9 @@ SEQ_LENGTH = config.seq_length
 WINDOW_SIZE = config.window_size
 START_DATE = config.start_date
 END_DATE = config.end_date
+TRAIN_START_DATE = config.train_start_date
+TRAIN_END_DATE = config.train_end_date
+
 MODEL_FOLDER = config.model_folder
 PRED_FOLDER = config.pred_folder
 DEBUG_MODE = config.debug
@@ -70,6 +73,8 @@ def process_location(args):
         WINDOW_SIZE,
         START_DATE,
         END_DATE,
+        TRAIN_START_DATE,
+        TRAIN_END_DATE,
         MODEL_FOLDER,
         PRED_FOLDER,
         INPUT_DIM,
@@ -90,8 +95,21 @@ def process_location(args):
         return
 
     try:
+        train_dataset = WetlandDataset(
+            TVARs=TVARs_copy.copy(),  # 注意：这里使用传入的副本
+            CVARs=CVARs_copy,
+            lat_idx=lat_idx,
+            lon_idx=lon_idx,
+            seq_length=SEQ_LENGTH,
+            window_size=WINDOW_SIZE,
+            start_date=TRAIN_START_DATE,
+            end_date=TRAIN_END_DATE,
+            predict=False,
+        )
+        target_scaler = train_dataset.target_scaler
+        feature_scalers = train_dataset.feature_scalers 
         dataset = WetlandDataset(
-            TVARs=TVARs_copy,  # 注意：这里使用传入的副本
+            TVARs=TVARs_copy.copy(),  # 注意：这里使用传入的副本
             CVARs=CVARs_copy,
             lat_idx=lat_idx,
             lon_idx=lon_idx,
@@ -99,6 +117,8 @@ def process_location(args):
             window_size=WINDOW_SIZE,
             start_date=START_DATE,
             end_date=END_DATE,
+            target_scaler=target_scaler,
+            feature_scalers=feature_scalers,
             predict=True,
         )
 
@@ -172,6 +192,8 @@ if __name__ == "__main__":
                 WINDOW_SIZE,
                 START_DATE,
                 END_DATE,
+                TRAIN_START_DATE,
+                TRAIN_END_DATE,
                 MODEL_FOLDER,
                 PRED_FOLDER,
                 INPUT_DIM,
