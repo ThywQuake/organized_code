@@ -18,6 +18,7 @@ class WetlandDataset(Dataset):
         window_size: int = 9,
         start_date: str = "1992-01-01",
         end_date: str = "2020-12-01",
+        predict: bool = False,
     ):
         """
         Input:
@@ -40,6 +41,7 @@ class WetlandDataset(Dataset):
 
         self.giems2 = TVARs.pop("giems2")
         self.TVARs, self.CVARs = TVARs, CVARs
+        self.predict = predict
 
         self.start_date, self.end_date = start_date, end_date
         self.dates = (
@@ -55,25 +57,14 @@ class WetlandDataset(Dataset):
         self.normalize_data()
         self.windows, self.dates_seq = self.create_windows()
 
-    def load_data(
-        self, start_date: Optional[str] = None, end_date: Optional[str] = None
-    ):
+    def load_data(self):
         lat, lon = self.lat_idx, self.lon_idx
-
-        giems2_center = (
-            self.giems2.isel(lat=lat, lon=lon)
-            .sel(time=slice(self.start_date, self.end_date))
-            .values
-        )
-
         window_radius = self.window_size // 2
         window_lats_raw = np.arange(lat - window_radius, lat + window_radius + 1)
         window_lons_raw = np.arange(lon - window_radius, lon + window_radius + 1)
-
         # dataset sizes
         lat_size = int(self.giems2.sizes["lat"])  # expected 720
         lon_size = int(self.giems2.sizes["lon"])  # expected 1440
-
         # apply latitude clamping (no wrap at poles)
         window_lats = np.clip(window_lats_raw, 0, lat_size - 1)
         # apply longitude wrap-around using modulo
@@ -87,20 +78,16 @@ class WetlandDataset(Dataset):
             )
         ] = True  # only mask latitudes, longitudes always wrap
 
-        if start_date is None:
-            start_date = self.start_date
-        if end_date is None:
-            end_date = self.end_date
-
         def extract_window(data, T=True):
             raw = data.isel(lat=window_lats, lon=window_lons)
             if T:
-                raw = raw.sel(time=slice(start_date, end_date)).values
+                raw = raw.sel(time=slice(self.start_date, self.end_date)).values
             raw = np.where(window_mask, raw, np.nan)
             if not T:
                 raw = np.full((len(self.dates),) + raw.shape, raw)
             raw = raw.reshape(len(self.dates), -1)
             return raw
+
 
         features = {
             name: extract_window(self.TVARs[name], T=True) for name in self.TVARs
@@ -108,7 +95,12 @@ class WetlandDataset(Dataset):
         features.update(
             {name: extract_window(self.CVARs[name], T=False) for name in self.CVARs}
         )
-
+          
+        giems2_center = (
+            self.giems2.isel(lat=lat, lon=lon)
+            .sel(time=slice(self.start_date, self.end_date))
+            .values
+        )
         potential = np.full((len(self.dates), 1), np.nanmax(giems2_center))
         features["potential"] = potential
         self.features = {
@@ -143,7 +135,7 @@ class WetlandDataset(Dataset):
         self.target_scaler = target_scaler
         self.feature_scalers = feature_scalers
 
-    def create_windows(self, predict=False):
+    def create_windows(self):
         windows = []
         dates_seq = []
         features = self.features
@@ -151,16 +143,20 @@ class WetlandDataset(Dataset):
         date = self.dates
 
         num_windows = len(target) - self.seq_length + 1
+        if self.predict:
+            num_windows = len(date) - self.seq_length + 1
         for i in range(num_windows):
-            target_index = i + self.seq_length - 1
-            if np.isnan(target[target_index]).any():
-                continue
             feature_window = features[i : i + self.seq_length]
-            target_window = target[i + self.seq_length - 1]
             window_date = date[i + self.seq_length - 1]
-            window = (feature_window, target_window)
-            if predict:
-                window = feature_window
+            window = feature_window
+
+            if not self.predict:
+                target_index = i + self.seq_length - 1
+                if np.isnan(target[target_index]).any():
+                    continue
+                target_window = target[i + self.seq_length - 1]
+                window = (feature_window, target_window)
+
             windows.append(window)
             dates_seq.append(window_date)
 

@@ -12,8 +12,6 @@ class Predict:
         lat_idx: int,
         lon_idx: int, 
         dataset: WetlandDataset,
-        start_date: str,
-        end_date: str,
         model: LSTMNetKAN,
         save_path: str,
         device: torch.device,
@@ -24,8 +22,6 @@ class Predict:
 
         Args:
             dataset (WetlandDataset): The dataset for making predictions.
-            start_date (str): The start date for the prediction period.
-            end_date (str): The end date for the prediction period. 
             model (LSTMNetKAN): The model to be used for predictions.
             device (torch.device): Device to run the prediction on. 
             save_path (str): The path where predictions will be saved.
@@ -34,15 +30,12 @@ class Predict:
         self.save_path = save_path
         self.device = device
         self.dataset = dataset
-        self.start_date = start_date
-        self.end_date = end_date
         self.model = model
         self.batch_size = batch_size
         
     def run(self):
-        features_scaler = self.dataset.feature_scalers
         target_scaler = self.dataset.target_scaler
-        windows, dates_seq = self.build_windows()
+        windows = self.dataset.windows
         
         self.model.eval()
         predictions = []
@@ -61,18 +54,13 @@ class Predict:
         self.pred = predictions_rescaled
         self.backfill()
         
-        dates = pd.date_range(start=self.start_date, end=self.end_date, freq='MS').to_pydatetime().tolist()
+        dates = self.dataset.dates
         preds = {
             "date": dates,
             "prediction": self.pred
         }
         np.save(self.save_path, preds)
         print(f"Predictions saved to {self.save_path}")
-        
-    def build_windows(self):
-        self.dataset.load_data(start_date=self.start_date, end_date=self.end_date)
-        self.dataset.normalize_data()
-        return self.dataset.create_windows(predict=True)
     
     def backfill(self):
         try:

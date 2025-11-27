@@ -7,6 +7,7 @@ import torch
 from utils.model import LSTMNetKAN
 from utils.dataset import WetlandDataset
 from utils.pred import Predict
+from utils.config import Config
 
 import warnings
 
@@ -15,45 +16,39 @@ warnings.filterwarnings("ignore")
 """============================= Configs ======================================="""
 
 print("Loading data...")
-TVARs = {
-    "giems2": xr.open_dataset("data/clean/GIEMS-MC_fwet.nc")["fwet"],
-    "era5": xr.open_dataset("data/clean/ERA5_tmp.nc")["tmp"],
-    "mswep": xr.open_dataset("data/clean/MSWEP_pre.nc")["pre"],
-    "gleam": xr.open_dataset("data/clean/GLEAM4a_sm.nc")["sm"],
-    "grace": xr.open_dataset("data/clean/GRACE_lwe_thickness.nc")["lwe_thickness"],
-}  # TVARs with time series
-CVARs = {
-    "fcti": xr.open_dataset("data/clean/fcti.nc")["fcti"],
-}  # CVARs without time series
-mask = xr.open_dataset("data/wetland_mask.nc")["mask"].values
-
+config = Config(
+    config_path="config/E.toml",
+    mode="predict"
+)
+TVARs = config.TVARs
+CVARs = config.CVARs
+mask = config.mask
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
-total_tasks = int(np.sum(mask))
+total_tasks = config.total_tasks
 print(f"Total training locations: {total_tasks}")
-tasks_per_thread = 10
-# temporary_thread = sys.argv[1]  # e.g., '0'
-temporary_thread = '0'
+tasks_per_thread = config.tasks_per_thread
+if config.debug:
+    temporary_thread = '0'
+else:
+    temporary_thread = sys.argv[1]
 
 start_task = int(temporary_thread) * tasks_per_thread
 end_task = min((int(temporary_thread) + 1) * tasks_per_thread, total_tasks)
 
-hidden_dim = 384
-n_layers = 2
-n_epochs = 150
-verbose_epoch = 100
-patience = 50
-batch_size = 16
-seq_length = 12
-window_size = 9
-start_date = "1984-01-01"
-end_date = "2023-12-01"
+hidden_dim = config.hidden_dim
+n_layers = config.n_layers
+n_epochs = config.n_epochs
+batch_size = config.batch_size
+seq_length = config.seq_length
+window_size = config.window_size
+start_date = config.start_date
+end_date = config.end_date
 
-model_folder = "output/model/E/"
-eval_folder = "output/eval/E/"
-pred_folder = "output/pred/E/"
-
+model_folder = config.model_folder
+eval_folder = config.eval_folder
+pred_folder = config.pred_folder
 """============================= Predicting ======================================="""
 
 print("Starting prediction...")
@@ -87,6 +82,7 @@ for lat_idx in range(mask.shape[0]):
             window_size=window_size,
             start_date=start_date,
             end_date=end_date,
+            predict=True,
         )
         input_dim = (len(TVARs) + len(CVARs) - 1) * (window_size**2) + 1
 
@@ -109,8 +105,6 @@ for lat_idx in range(mask.shape[0]):
             dataset=dataset,
             lat_idx=lat_idx,
             lon_idx=lon_idx,
-            start_date=start_date,
-            end_date=end_date,
             model=model,
             device=device,
             batch_size=batch_size,
