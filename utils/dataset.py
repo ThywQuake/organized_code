@@ -87,9 +87,9 @@ class WetlandDataset(Dataset):
             )
         ] = True  # only mask latitudes, longitudes always wrap
 
-        if start_date is not None:
+        if start_date is None:
             start_date = self.start_date
-        if end_date is not None:
+        if end_date is None:
             end_date = self.end_date
 
         def extract_window(data, T=True):
@@ -104,7 +104,8 @@ class WetlandDataset(Dataset):
 
         features = {
             name: extract_window(self.TVARs[name], T=True) for name in self.TVARs
-        }.update(
+        }
+        features.update(
             {name: extract_window(self.CVARs[name], T=False) for name in self.CVARs}
         )
 
@@ -137,12 +138,12 @@ class WetlandDataset(Dataset):
         )
         # keep NaNs where original targets were NaN
 
-        self.features = np.hstack(feature_scaled.values())
+        self.features = np.hstack(list(feature_scaled.values()))
         self.target = target_scaled
         self.target_scaler = target_scaler
         self.feature_scalers = feature_scalers
 
-    def create_windows(self):
+    def create_windows(self, predict=False):
         windows = []
         dates_seq = []
         features = self.features
@@ -157,7 +158,10 @@ class WetlandDataset(Dataset):
             feature_window = features[i : i + self.seq_length]
             target_window = target[i + self.seq_length - 1]
             window_date = date[i + self.seq_length - 1]
-            windows.append((feature_window, target_window))
+            window = (feature_window, target_window)
+            if predict:
+                window = feature_window
+            windows.append(window)
             dates_seq.append(window_date)
 
         return windows, dates_seq

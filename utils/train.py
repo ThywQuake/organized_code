@@ -45,8 +45,7 @@ class Train:
         self.model_type = model_type
         self.verbose_epoch = verbose_epoch
         self.patience = patience
-        
-        return self.run()
+        self.device = device
         
     def run(self):
         self.model_setup()
@@ -67,7 +66,7 @@ class Train:
         
     def model_setup(self):
         if self.train_loader is not None and len(self.train_loader.dataset) > 0:
-            input_dim = self.train_loader.dataset[0].shape[1]
+            input_dim = self.train_loader.dataset[0][0][0].shape[0]
         else:
             input_dim = 244  # Default input dimension if train_loader is empty
             
@@ -79,7 +78,7 @@ class Train:
             case 'GRU':
                 model = GRUNet(input_dim, self.hidden_dim, output_dim, self.n_layers)
             case 'LSTM_KAN':
-                model = LSTMNetKAN(input_dim, self.hidden_dim, output_dim, self.n_layers)
+                model = LSTMNetKAN(input_dim, self.hidden_dim, output_dim, self.n_layers, device=self.device)
             case 'GRU_KAN':
                 model = GRUNetKAN(input_dim, self.hidden_dim, output_dim, self.n_layers)
             case _:

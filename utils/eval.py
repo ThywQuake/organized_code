@@ -6,72 +6,68 @@ from sklearn.metrics import r2_score, mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
 
 from utils.model import LSTMNetKAN
-from utils.dataset import WetlandDataset
+from utils.dataset import WetlandDataset, wetland_dataloader
 
 
 class Eval:
     def __init__(
         self,
         model: LSTMNetKAN,
-        train_loader: DataLoader,
-        test_loader: DataLoader,
-        scaler: MinMaxScaler,
-        dataset: WetlandDataset,
+        lat_idx: int,
+        lon_idx: int,
+        train_dataloader: DataLoader,
+        test_dataloader: DataLoader,
         eval_folder: str,
         model_folder: str,
+        target_scaler: MinMaxScaler,
         device: torch.device,
-        lats: np.ndarray,
-        lons: np.ndarray,
     ):
         """
         Initialize the evaluation process with model, data loaders, scaler, and dataset.
 
         Args:
             model (LSTMNetKAN): The trained model to evaluate.
-            train_loader (DataLoader): DataLoader for training data.
-            test_loader (DataLoader): DataLoader for testing data.
-            scaler (dict[str, MinMaxScaler]): Dictionary of scalers for inverse transforming predictions.
-            dataset (WetlandDataset_Loc): The dataset used for evaluation.
+            lat_idx (int): Latitude index of the location.
+            lon_idx (int): Longitude index of the location.
+            train_dataloader (DataLoader): DataLoader for training data.
+            test_dataloader (DataLoader): DataLoader for testing data.
             eval_folder (str): Folder path to save evaluation results.
             model_folder (str): Folder path where the trained model is saved.
+            target_scaler (MinMaxScaler): Scaler used for the target variable.
             device (torch.device): Device to run the evaluation on.
-            lats (np.ndarray): Array of latitude indices for the locations.
-            lons (np.ndarray): Array of longitude indices for the locations.
         """
         self.model = model
-        self.train_loader = train_loader
-        self.test_loader = test_loader
-        self.scaler = scaler
-        self.dataset = dataset
+        self.lat_idx = lat_idx
+        self.lon_idx = lon_idx
+        self.train_loader = train_dataloader
+        self.test_loader = test_dataloader
         self.eval_folder = eval_folder
         self.model_folder = model_folder
-        self.lats = lats
-        self.lons = lons
+        self.scaler = target_scaler
         self.device = device
+
 
     def run(self):
         if not os.path.exists(self.eval_folder):
             os.makedirs(self.eval_folder)
 
-        for lat in self.lats:
-            for lon in self.lons:
-                model_path = os.path.join(self.model_folder, f"{lat}_{lon}.pth")
-                if not os.path.exists(model_path):
-                    print(f"Model for location ({lat}, {lon}) not found. Skipping.")
-                    continue
-                print(f"Processing location ({lat}, {lon})...")
+        model_path = os.path.join(self.model_folder, f"{self.lat_idx}_{self.lon_idx}.pth")
+        if not os.path.exists(model_path):
+            print(f"Model for location ({self.lat_idx}, {self.lon_idx}) not found. Skipping.")
+            return
+        print(f"Processing location ({self.lat_idx}, {self.lon_idx})...")
 
-                self.model.load_state_dict(torch.load(model_path, map_location=self.device))
-                self.eval()
+        self.model.load_state_dict(torch.load(model_path, map_location=self.device))
+        self.eval()
 
-                eval_path = os.path.join(self.eval_folder, f"{lat}_{lon}.npy")
-                np.save(
-                    eval_path,
-                    {
-                        "Y_inv": self.Y_inv,
-                        "metrics": self.metrics,
-                    },
-                )
+        eval_path = os.path.join(self.eval_folder, f"{self.lat_idx}_{self.lon_idx}.npy")
+        np.save(
+            eval_path,
+            {
+                "Y_inv": self.Y_inv,
+                "metrics": self.metrics,
+            },
+        )
 
     @staticmethod
     def sMAPE(y_true: np.ndarray, y_pred: np.ndarray) -> float:
@@ -143,8 +139,8 @@ class Eval:
 
                 h = self.model.init_hidden(inputs.size(0))
                 outputs, h = self.model(inputs, h)
-                Y["y_pred_train"].append(outputs.cpu().numpy().reshape(-1))
-                Y["y_true_train"].append(targets.cpu().numpy().reshape(-1))
+                Y["y_pred_train"].append(outputs.cpu().numpy().flatten())
+                Y["y_true_train"].append(targets.cpu().numpy().flatten())
 
             for inputs, targets in self.test_loader:
                 inputs = inputs.to(self.device).float()
@@ -152,8 +148,8 @@ class Eval:
 
                 h = self.model.init_hidden(inputs.size(0))
                 outputs, h = self.model(inputs, h)
-                Y["y_pred_test"].append(outputs.cpu().numpy().reshape(-1))
-                Y["y_true_test"].append(targets.cpu().numpy().reshape(-1))
+                Y["y_pred_test"].append(outputs.cpu().numpy().flatten())
+                Y["y_true_test"].append(targets.cpu().numpy().flatten())
 
         Y_inv = {name: self.inverse(Y[name]) for name in Y}
 

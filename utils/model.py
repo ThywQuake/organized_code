@@ -280,9 +280,9 @@ class LSTMNetKAN(nn.Module):
 
         self.lstm = nn.LSTM(
             input_dim, hidden_dim, n_layers, batch_first=True, dropout=drop_prob
-        )
-        self.fc = KANLinear(hidden_dim, output_dim)
-        self.relu = nn.ReLU()
+        ).to(device)
+        self.fc = KANLinear(hidden_dim, output_dim).to(device)
+        self.relu = nn.ReLU().to(device)
         
         self.device = device
 

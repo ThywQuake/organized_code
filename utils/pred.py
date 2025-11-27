@@ -39,8 +39,6 @@ class Predict:
         self.model = model
         self.batch_size = batch_size
         
-        self.run()
-        
     def run(self):
         features_scaler = self.dataset.feature_scalers
         target_scaler = self.dataset.target_scaler
@@ -74,7 +72,7 @@ class Predict:
     def build_windows(self):
         self.dataset.load_data(start_date=self.start_date, end_date=self.end_date)
         self.dataset.normalize_data()
-        return self.dataset.create_windows()
+        return self.dataset.create_windows(predict=True)
     
     def backfill(self):
         try:
