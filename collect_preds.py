@@ -3,17 +3,21 @@ import xarray as xr
 import os
 import pandas as pd
 
+'''============================= Configs ======================================="""'''
 mask = xr.open_dataset("data/wetland_mask.nc")
 start_date = "1984-01-01"
 end_date = "2023-12-01"
-dates = pd.date_range(start=start_date, end=end_date, freq="MS")
+pred_folder = "output/pred/E/"
+out_file = "output/pred_E.nc"
 
+
+dates = pd.date_range(start=start_date, end=end_date, freq="MS")
 zeros = np.zeros((mask["mask"].shape[0], mask["mask"].shape[1], len(dates)))
 for lat_idx in range(mask["mask"].shape[0]):
     for lon_idx in range(mask["mask"].shape[1]):
         if not mask["mask"].values[lat_idx, lon_idx]:
             continue
-        npy_path = f"output/pred/E/{lat_idx}_{lon_idx}.npy"
+        npy_path = f"{pred_folder}{lat_idx}_{lon_idx}.npy"
         if not os.path.exists(npy_path):
             print(f"File {npy_path} does not exist. Skipping...")
             continue
@@ -31,4 +35,4 @@ preds = xr.DataArray(
     },
     name = "fwet"
 )
-preds.to_netcdf("output/pred_E.nc")
+preds.to_netcdf(out_file)

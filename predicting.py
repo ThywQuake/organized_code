@@ -1,7 +1,5 @@
-import xarray as xr
 import os
 import sys
-import numpy as np
 import torch
 
 from utils.model import LSTMNetKAN
@@ -16,10 +14,7 @@ warnings.filterwarnings("ignore")
 """============================= Configs ======================================="""
 
 print("Loading data...")
-config = Config(
-    config_path="config/E_debug.toml",
-    mode="predict"
-)
+config = Config(config_path="config/E_debug.toml", mode="predict")
 TVARs = config.TVARs
 CVARs = config.CVARs
 mask = config.mask
@@ -30,7 +25,7 @@ total_tasks = config.total_tasks
 print(f"Total training locations: {total_tasks}")
 tasks_per_thread = config.tasks_per_thread
 if config.debug:
-    temporary_thread = '0'
+    temporary_thread = "0"
 else:
     temporary_thread = sys.argv[1]
 
@@ -68,8 +63,10 @@ for lat_idx in range(mask.shape[0]):
 
         os.makedirs(pred_folder, exist_ok=True)
         save_path = os.path.join(pred_folder, f"{lat_idx}_{lon_idx}.npy")
-        if os.path.exists(save_path):
-            print(f"Predictions for location ({lat_idx}, {lon_idx}) already exist. Skipping...")
+        if not config.debug and os.path.exists(save_path):
+            print(
+                f"Predictions for location ({lat_idx}, {lon_idx}) already exist. Skipping..."
+            )
             continue
 
         dataset = WetlandDataset(
@@ -90,7 +87,7 @@ for lat_idx in range(mask.shape[0]):
             hidden_dim=hidden_dim,
             output_dim=1,
             n_layers=n_layers,
-            device=device
+            device=device,
         )
 
         model_path = os.path.join(model_folder, f"{lat_idx}_{lon_idx}.pth")

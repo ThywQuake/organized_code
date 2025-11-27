@@ -22,6 +22,7 @@ class Train:
         verbose_epoch: int,
         device: torch.device,
         patience: int,
+        debug: bool = False,
     ):
         """
         Initialize the training process with data loaders, model parameters, and training settings.
@@ -36,6 +37,8 @@ class Train:
             model_type (Literal['GRU', 'LSTM', 'GRU_KAN', 'LSTM_KAN']): Type of model to use.
             verbose_epoch (int): Frequency of logging training progress.
             patience (int): Patience for early stopping.
+            device (torch.device): Device to run the training on.
+            debug (bool): If True, runs in debug mode with limited data.
         """
         
         self.train_loader, self.test_loader = train_loader, test_loader
@@ -46,6 +49,10 @@ class Train:
         self.verbose_epoch = verbose_epoch
         self.patience = patience
         self.device = device
+        self.debug = debug
+        
+        if self.debug:
+            self.n_epochs = 10
         
     def run(self):
         self.model_setup()
@@ -119,7 +126,7 @@ class Train:
         with torch.no_grad():
             test_loss = 0.0
             for inputs, targets in self.test_loader:
-                loss = self.eval_phase(inputs, targets)
+                loss = self.test_phase(inputs, targets)
                 test_loss += loss.item()
         avg_test_loss = test_loss / len(self.test_loader)
         print(f"  [Test] Avg Loss: {avg_test_loss:.6f}")
@@ -159,7 +166,7 @@ class Train:
         
         return loss
     
-    def eval_phase(self, inputs, targets):
+    def test_phase(self, inputs, targets):
         inputs = inputs.to(self.device).float()
         targets = targets.to(self.device).float()
         
