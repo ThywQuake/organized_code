@@ -42,7 +42,6 @@ class WetlandDataset(Dataset):
         dates_seq = []
 
         num_windows = len(self.dates) - self.seq_length + 1
-
         for i in range(num_windows):
             feature_window = self.features[i : i + self.seq_length]
             window_date = self.dates[i + self.seq_length - 1]

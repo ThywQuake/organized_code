@@ -114,12 +114,7 @@ class Trainer:
         """
         Initializes the model and moves it to the device.
         """
-        if self.train_loader is not None and len(self.train_loader.dataset) > 0:
-            # Determine input_dim from the training data structure
-            input_dim = self.train_loader.dataset[0][0].shape[-1]
-        else:
-            input_dim = 244
-
+        input_dim = self.train_loader.dataset[0][0].shape[-1]
         output_dim = 1
 
         match self.model_type:

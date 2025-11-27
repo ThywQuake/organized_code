@@ -6,7 +6,6 @@ from sklearn.metrics import r2_score, mean_squared_error
 from sklearn.preprocessing import MinMaxScaler
 
 from utils.model import LSTMNetKAN
-from utils.dataset import WetlandDataset, wetland_dataloader
 
 
 class Eval:

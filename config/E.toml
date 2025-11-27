@@ -1,5 +1,5 @@
 [sys_mode]
-debug = false 
+debug = false
 cover_exist = false
 train_tasks_per_thread = 1000
 predict_tasks_per_thread = 5000
@@ -55,11 +55,29 @@ n_layers = 2
 batch_size = 16
 seq_length = 12
 window_size = 9
+type = "LSTM_KAN"
 
 [train]
 start_date = "1992-01-01"
 end_date = "2020-12-31"
-train_years = [1992,1993,1994,2003,2004,2005,2007,2008,2009,2010,2011,2012,2013,2014,2018,2019]
+train_years = [
+    1992,
+    1993,
+    1994,
+    2003,
+    2004,
+    2005,
+    2007,
+    2008,
+    2009,
+    2010,
+    2011,
+    2012,
+    2013,
+    2014,
+    2018,
+    2019,
+]
 lr = 0.0005
 n_epochs = 150
 patience = 50
