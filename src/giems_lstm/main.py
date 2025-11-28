@@ -3,6 +3,7 @@ import os
 import sys
 import torch
 import numpy as np
+import random
 import multiprocessing as mp
 from pathlib import Path
 from functools import partial
@@ -27,15 +28,33 @@ from giems_lstm.model import LSTMNetKAN
 
 app = typer.Typer(help="GIEMS-LSTM Training and Prediction CLI")
 
+
+def seed_everything(seed: int):
+    """
+    Set random seeds for reproducibility across python, numpy, and torch.
+    """
+    random.seed(seed)
+    os.environ["PYTHONHASHSEED"] = str(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
+
+
 # ==============================================================================
 # Worker Functions (Must be top-level for multiprocessing pickle)
 # ==============================================================================
 
 
-def train_chunk(thread_id: int, config_path: str, debug: bool):
+def train_chunk(thread_id: int, config_path: str, debug: bool, seed: int):
     """
     Process a single chunk of training tasks (core logic from training.py)
     """
+    # Set seed for this worker process
+    seed_everything(seed)
+
     # Each process needs to reload configuration and data references to avoid issues with multiprocessing sharing complex objects forked from the main process
     config = Config(config_path=config_path, mode="train")
     if debug:
@@ -181,10 +200,13 @@ def train_chunk(thread_id: int, config_path: str, debug: bool):
             evaluator.run()
 
 
-def predict_chunk(thread_id: int, config_path: str, debug: bool):
+def predict_chunk(thread_id: int, config_path: str, debug: bool, seed: int):
     """
     Process a single chunk of prediction tasks (core logic from predicting.py)
     """
+    # Set seed for this worker process
+    seed_everything(seed)
+
     config = Config(config_path=config_path, mode="predict")
     if debug:
         config.sys.debug = True
@@ -306,10 +328,16 @@ def train(
     debug: bool = typer.Option(
         False, "--debug", "-d", help="Enable debug mode (overrides config)"
     ),
+    seed: int = typer.Option(
+        3407, "--seed", "-s", help="Random seed for reproducibility"
+    ),
 ):
     """
     Run training pipeline.
     """
+    # Set seed for the main process
+    seed_everything(seed)
+
     if debug:
         print("!!! DEBUG MODE ENABLED !!!")
 
@@ -329,7 +357,7 @@ def train(
         # Note: 'spawn' is the recommended start method for PyTorch/CUDA
         mp.set_start_method("spawn", force=True)
 
-        func = partial(train_chunk, config_path=config_path, debug=debug)
+        func = partial(train_chunk, config_path=config_path, debug=debug, seed=seed)
 
         with mp.Pool(processes=parallel) as pool:
             pool.map(func, range(num_chunks))
@@ -337,7 +365,7 @@ def train(
     # 2. Single Chunk / Slurm Mode
     else:
         print(f"Single Thread Execution: Running chunk {thread_id}")
-        train_chunk(thread_id, config_path, debug)
+        train_chunk(thread_id, config_path, debug, seed)
 
 
 @app.command()
@@ -352,10 +380,16 @@ def predict(
         1, "--parallel", "-p", help="Number of local processes to spawn."
     ),
     debug: bool = typer.Option(False, "--debug", "-d", help="Enable debug mode"),
+    seed: int = typer.Option(
+        3407, "--seed", "-s", help="Random seed for reproducibility"
+    ),
 ):
     """
     Run prediction pipeline.
     """
+    # Set seed for the main process
+    seed_everything(seed)
+
     if parallel > 1:
         temp_cfg = Config(config_path, mode="predict")
         # Note: Ensure the method to get mask total is consistent
@@ -367,12 +401,12 @@ def predict(
             f"Parallel Execution: Launching {parallel} workers for {num_chunks} total chunks."
         )
         mp.set_start_method("spawn", force=True)
-        func = partial(predict_chunk, config_path=config_path, debug=debug)
+        func = partial(predict_chunk, config_path=config_path, debug=debug, seed=seed)
 
         with mp.Pool(processes=parallel) as pool:
             pool.map(func, range(num_chunks))
     else:
-        predict_chunk(thread_id, config_path, debug)
+        predict_chunk(thread_id, config_path, debug, seed)
 
 
 if __name__ == "__main__":

@@ -7,22 +7,31 @@ name = "organized-code"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.12"
+# 1. 关键修改: 将 Python 版本降级到 3.10，确保 PyTorch 2.1.2 的兼容性
+requires-python = ">=3.10,<3.12"
 dependencies = [
-    "dask>=2025.11.0",
-    "ipykernel>=7.1.0",
-    "matplotlib>=3.10.7",
-    "netcdf4>=1.7.3",
-    "pandas>=2.3.3",
-    "pytest>=9.0.1",
-    "scikit-learn>=1.7.2",
-    "statsmodels>=0.14.5",
+    # 注意: 某些依赖版本可能因 Python 3.10 的兼容性而略微调整
+    "dask>=2024.1.0",
+    "ipykernel>=6.29.5",
+    "matplotlib>=3.7.0",
+    "netcdf4>=1.6.5",
+    "pandas>=2.1.4",
+    "pytest>=7.4.3",
+    "scikit-learn>=1.3.2",
+    "statsmodels>=0.14.0",
     "toml>=0.10.2",
-    "torch>=2.9.1",
-    "torchaudio>=2.9.1",
-    "torchvision>=0.24.1",
-    "typer>=0.20.0",
-    "xarray>=2025.11.0",
+
+    # 2. 关键修改: 锁定 PyTorch 稳定版本 2.1.2 (CPU)
+    "torch==2.1.2",
+    "torchvision==0.16.2",
+    "torchaudio==2.1.2",
+
+    # 3. 关键修改: 显式添加 NumPy 约束，强制其版本小于 2.0，以避免 DLL 初始化冲突
+    "numpy<2.0",
+
+    "tqdm>=4.66.1",
+    "typer>=0.9.0",
+    "xarray>=2023.10.0",
 ]
 
 [dependency-groups]
