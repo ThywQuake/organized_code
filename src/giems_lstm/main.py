@@ -130,7 +130,9 @@ def train_chunk(thread_id: int, config_path: str, debug: bool, seed: int):
                 config.train.start_date,
                 config.train.end_date,
             )
-            feature_scalers, target_scaler = fit_scalers(features, target)
+            target_scaler, feature_scalers = fit_scalers(
+                raw_target=target, raw_features=features
+            )
             features_scaled = transform_features(features, feature_scalers)
             target_scaled = transform_target(target, target_scaler)
 

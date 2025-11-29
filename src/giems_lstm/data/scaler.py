@@ -6,8 +6,8 @@ ScalerSet = Tuple[Optional[MinMaxScaler], Optional[Dict[str, MinMaxScaler]]]
 
 
 def fit_scalers(
-    raw_features: Dict[str, np.ndarray],
     raw_target: np.ndarray,
+    raw_features: Dict[str, np.ndarray],
 ) -> ScalerSet:
     """
     Fit MinMaxScalers for features and target variable.
