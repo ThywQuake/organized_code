@@ -6,6 +6,30 @@ import multiprocessing as mp
 from functools import partial
 import logging
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    import torch
+    import numpy as np
+
+    from giems_lstm.data import (
+        extract_window_data,
+        fit_scalers,
+        transform_features,
+        transform_target,
+        WetlandDataset,
+        wetland_dataloader,
+    )
+    from giems_lstm.engine import Trainer, Evaluator, Predictor
+    from giems_lstm.config import Config
+    from giems_lstm.model import LSTMNetKAN
+
+app = typer.Typer(help="GIEMS-LSTM Training and Prediction CLI")
+
+
+def _init_imports():
+    pass
+
 
 def setup_global_logging(debug: bool, process_type: str):
     """
@@ -33,17 +57,10 @@ def setup_global_logging(debug: bool, process_type: str):
         logger.addHandler(handler)
 
 
-app = typer.Typer(help="GIEMS-LSTM Training and Prediction CLI")
-
-
 def _seed_everything(seed: int):
     """
     Set random seeds for reproducibility across python, numpy, and torch.
     """
-
-    import torch
-    import numpy as np
-
     random.seed(seed)
     os.environ["PYTHONHASHSEED"] = str(seed)
     np.random.seed(seed)
@@ -58,20 +75,9 @@ def _seed_everything(seed: int):
 # Worker Functions (Must be top-level for multiprocessing pickle)
 # ==============================================================================
 # TODO: Add collect function to gather results after all chunks complete
-# TODO: Differnciate logging levels for debug and normal runs
 
 
 def _train_task(coord, config, thread_id, device):
-    from giems_lstm.data import (
-        extract_window_data,
-        fit_scalers,
-        transform_features,
-        transform_target,
-        WetlandDataset,
-        wetland_dataloader,
-    )
-    from giems_lstm.engine import Trainer, Evaluator
-
     logger = logging.getLogger()
 
     # --- Training Logic ---
@@ -162,11 +168,6 @@ def _allocate_coords(mask, start_task, end_task):
 
 
 def _train(thread_id: int, config_path: str, debug: bool, para: int):
-    import torch
-    import numpy as np
-
-    from giems_lstm.config import Config
-
     # Each process needs to reload configuration and data references to avoid issues with multiprocessing sharing complex objects forked from the main process
     config = Config(config_path=config_path, mode="train")
     if debug:
@@ -193,16 +194,6 @@ def _train(thread_id: int, config_path: str, debug: bool, para: int):
 
 
 def _predict_task(coord, config, thread_id, device):
-    from giems_lstm.data import (
-        extract_window_data,
-        fit_scalers,
-        transform_features,
-        WetlandDataset,
-    )
-    from giems_lstm.engine import Predictor
-    from giems_lstm.model import LSTMNetKAN
-    import torch
-
     logger = logging.getLogger()
 
     lat_idx, lon_idx = coord
@@ -280,11 +271,6 @@ def _predict_task(coord, config, thread_id, device):
 
 
 def _predict(thread_id: int, config_path: str, debug: bool, para: int):
-    import torch
-    import numpy as np
-
-    from giems_lstm.config import Config
-
     # Each process needs to reload configuration and data references to avoid issues with multiprocessing sharing complex objects forked from the main process
     config = Config(config_path=config_path, mode="predict")
     if debug:
@@ -340,9 +326,8 @@ def train(
         3407, "--seed", "-s", help="Random seed for reproducibility"
     ),
 ):
-    """
-    Run training pipeline.
-    """
+    _init_imports()
+
     setup_global_logging(debug, "Main")
     logger = logging.getLogger()
     if debug:
@@ -369,9 +354,8 @@ def predict(
         3407, "--seed", "-s", help="Random seed for reproducibility"
     ),
 ):
-    """
-    Run prediction pipeline.
-    """
+    _init_imports()
+
     setup_global_logging(debug, "Main")
     logger = logging.getLogger()
     if debug:
