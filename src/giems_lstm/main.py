@@ -1,8 +1,37 @@
 import typer
 import os
+import sys
 import random
 import multiprocessing as mp
 from functools import partial
+import logging
+
+
+def setup_global_logging(debug: bool, process_type: str):
+    """
+    Configures the root logger for the current process.
+    - debug: If True, sets level to DEBUG. Otherwise, sets to INFO.
+    - process_type: A label (e.g., 'Main' or 'Worker-ID') for log differentiation.
+    """
+    # set logging level based on debug flag
+    level = logging.DEBUG if debug else logging.INFO
+
+    # fetch the root logger
+    logger = logging.getLogger()
+    logger.setLevel(level)
+
+    # Avoid adding multiple handlers in multiprocessing
+    if not logger.handlers:
+        handler = logging.StreamHandler(sys.stdout)
+        handler.setLevel(level)
+
+        # Define format including process info for distinguishing logs in parallel runs
+        formatter = logging.Formatter(
+            f"[%(levelname)s] [PROC:{process_type}] [%(filename)s:%(lineno)d] - %(message)s"
+        )
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+
 
 app = typer.Typer(help="GIEMS-LSTM Training and Prediction CLI")
 
@@ -43,14 +72,16 @@ def _train_task(coord, config, thread_id, device):
     )
     from giems_lstm.engine import Trainer, Evaluator
 
+    logger = logging.getLogger()
+
     # --- Training Logic ---
     lat_idx, lon_idx = coord
     model_path = config.model_folder / f"{lat_idx}_{lon_idx}.pth"
     if not config.sys.debug and model_path.exists() and not config.sys.cover_exist:
-        print(f"[Thread {thread_id}] Model {lat_idx},{lon_idx} exists. Skipping.")
+        logger.info(f"[Thread {thread_id}] Model {lat_idx},{lon_idx} exists. Skipping.")
         return
 
-    print(f"[Thread {thread_id}] Training {lat_idx}, {lon_idx}")
+    logger.info(f"[Thread {thread_id}] Training {lat_idx}, {lon_idx}")
 
     # Construct Dataset
     features, target, dates = extract_window_data(
@@ -95,7 +126,7 @@ def _train_task(coord, config, thread_id, device):
         trainer.run()
 
     except Exception as e:
-        print(f"Error preparing data for {lat_idx},{lon_idx}: {e}")
+        logger.error(f"Error preparing data for {lat_idx},{lon_idx}: {e}")
         return
 
     try:
@@ -110,7 +141,7 @@ def _train_task(coord, config, thread_id, device):
         )
         evaluator.run()
     except Exception as e:
-        print(f"Error during evaluation for {lat_idx},{lon_idx}: {e}")
+        logger.error(f"Error during evaluation for {lat_idx},{lon_idx}: {e}")
         return
 
 
@@ -172,8 +203,10 @@ def _predict_task(coord, config, thread_id, device):
     from giems_lstm.model import LSTMNetKAN
     import torch
 
+    logger = logging.getLogger()
+
     lat_idx, lon_idx = coord
-    print(f"[Thread {thread_id}] Predicting {lat_idx}, {lon_idx}")
+    logger.info(f"[Thread {thread_id}] Predicting {lat_idx}, {lon_idx}")
 
     train_features, train_target, _ = extract_window_data(
         lat_idx,
@@ -205,38 +238,45 @@ def _predict_task(coord, config, thread_id, device):
 
     save_path = config.pred_folder / f"{lat_idx}_{lon_idx}.npy"
     if not config.sys.debug and save_path.exists() and not config.sys.cover_exist:
-        print(
+        logger.info(
             f"Predictions for location ({lat_idx}, {lon_idx}) already exist. Skipping..."
         )
         return
-
-    model = LSTMNetKAN(
-        input_dim=(len(config.TVARs) + len(config.CVARs) - 1)
-        * (config.model.window_size**2)
-        + 1,
-        hidden_dim=config.model.hidden_dim,
-        output_dim=1,
-        n_layers=config.model.n_layers,
-        device=device,
-    )
-    model.load_state_dict(
-        torch.load(
-            config.model_folder / f"{lat_idx}_{lon_idx}.pth", map_location=device
+    try:
+        model = LSTMNetKAN(
+            input_dim=(len(config.TVARs) + len(config.CVARs) - 1)
+            * (config.model.window_size**2)
+            + 1,
+            hidden_dim=config.model.hidden_dim,
+            output_dim=1,
+            n_layers=config.model.n_layers,
+            device=device,
         )
-    )
+        model.load_state_dict(
+            torch.load(
+                config.model_folder / f"{lat_idx}_{lon_idx}.pth", map_location=device
+            )
+        )
+    except Exception as e:
+        logger.error(f"Error loading model for {lat_idx},{lon_idx}: {e}")
+        return
 
-    predictor = Predictor(
-        lat_idx=lat_idx,
-        lon_idx=lon_idx,
-        dataset=dataset,
-        target_scaler=target_scaler,
-        model=model,
-        device=device,
-        batch_size=config.model.batch_size,
-        save_path=save_path,
-        debug=config.sys.debug,
-    )
-    predictor.run()
+    try:
+        predictor = Predictor(
+            lat_idx=lat_idx,
+            lon_idx=lon_idx,
+            dataset=dataset,
+            target_scaler=target_scaler,
+            model=model,
+            device=device,
+            batch_size=config.model.batch_size,
+            save_path=save_path,
+            debug=config.sys.debug,
+        )
+        predictor.run()
+    except Exception as e:
+        logger.error(f"Error during prediction for {lat_idx},{lon_idx}: {e}")
+        return
 
 
 def _predict(thread_id: int, config_path: str, debug: bool, para: int):
@@ -303,10 +343,13 @@ def train(
     """
     Run training pipeline.
     """
+    setup_global_logging(debug, "Main")
+    logger = logging.getLogger()
+    if debug:
+        logger.warning("!!! DEBUG MODE ENABLED !!!")
 
     # Set seed for the main process
     _seed_everything(seed)
-
     _train(thread_id, config_path, debug, parallel)
 
 
@@ -329,6 +372,10 @@ def predict(
     """
     Run prediction pipeline.
     """
+    setup_global_logging(debug, "Main")
+    logger = logging.getLogger()
+    if debug:
+        logger.warning("!!! DEBUG MODE ENABLED !!!")
 
     # Set seed for the main process
     _seed_everything(seed)

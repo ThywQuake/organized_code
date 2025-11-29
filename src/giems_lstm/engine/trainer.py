@@ -11,8 +11,7 @@ from ..model import LSTMNet, GRUNet, LSTMNetKAN, GRUNetKAN
 from ..config import TrainConfig, ModelConfig
 
 # Configure basic logging (can be customized further outside this class)
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger = logging.getLogger()
 if not logger.handlers:
     # Add a handler if running standalone without external configuration
     ch = logging.StreamHandler()
@@ -40,6 +39,18 @@ class Trainer:
     ):
         """
         Initializes the trainer with data loaders, model parameters, and training settings.
+
+        Args:
+            train_loader: DataLoader for the training dataset.
+            test_loader: DataLoader for the testing/validation dataset.
+            train_config: Configuration parameters for training.
+            model_config: Configuration parameters for the model.
+            lat_idx: Latitude index for the current training instance.
+            lon_idx: Longitude index for the current training instance.
+            model_folder: Directory path to save the trained model.
+            device: Torch device (CPU or GPU) for training.
+            debug: Flag to enable debug mode.
+
         """
         self.train_loader = train_loader
         self.test_loader = test_loader
@@ -73,11 +84,11 @@ class Trainer:
         self._model_setup()
         self._learning_setup()
 
-        logger.info(f"Starting training for {self.n_epochs} epochs on {self.device}")
+        logger.debug(f"Starting training for {self.n_epochs} epochs on {self.device}")
 
         for epoch in range(1, self.n_epochs + 1):
             start_time = time.process_time()
-            logger.info(f"--- Epoch {epoch}/{self.n_epochs}: ---")
+            logger.debug(f"--- Epoch {epoch}/{self.n_epochs}: ---")
 
             # 1. Training Phase
             train_avg_loss = self._run_epoch(self.train_loader, is_training=True)
@@ -86,12 +97,14 @@ class Trainer:
             self.scheduler.step()
             current_lr = self.optimizer.param_groups[0]["lr"]
 
-            logger.info(f"[Train] Avg Loss: {train_avg_loss:.6f}, LR: {current_lr:.6f}")
+            logger.debug(
+                f"[Train] Avg Loss: {train_avg_loss:.6f}, LR: {current_lr:.6f}"
+            )
 
             # 3. Validation Phase
             test_avg_loss = self._run_epoch(self.test_loader, is_training=False)
 
-            logger.info(f"[Validation] Avg Loss: {test_avg_loss:.6f}")
+            logger.debug(f"[Validation] Avg Loss: {test_avg_loss:.6f}")
 
             # 4. Checkpoint and Early Stopping
             epoch_time = time.process_time() - start_time
@@ -100,11 +113,13 @@ class Trainer:
             if not self._check_early_stopping(test_avg_loss):
                 break
 
-        logger.info(f"Total training time: {sum(self.epoch_times):.2f} seconds")
+        logger.debug(f"Total training time: {sum(self.epoch_times):.2f} seconds")
 
         if self.best_model_state is not None:
             self.model.load_state_dict(self.best_model_state)
-            logger.info(f"Best model loaded with validation loss: {self.best_loss:.6f}")
+            logger.debug(
+                f"Best model loaded with validation loss: {self.best_loss:.6f}"
+            )
 
         self._save_model()
 
@@ -243,12 +258,12 @@ class Trainer:
             self.epochs_no_improve = 0
             # Save a deep copy of the model state dict for the best checkpoint
             self.best_model_state = self.model.state_dict().copy()
-            logger.info("  New best model state saved.")
+            logger.debug("  New best model state saved.")
         else:
             self.epochs_no_improve += 1
 
         if self.epochs_no_improve >= self.patience:
-            logger.warning("Early stopping triggered due to no improvement.")
+            logger.debug("Early stopping triggered due to no improvement.")
             return False
 
         return True

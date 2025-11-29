@@ -10,8 +10,7 @@ from typing import Dict, List, Union
 from ..model import LSTMNetKAN, LSTMNet, GRUNetKAN, GRUNet
 
 # Configure logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger = logging.getLogger()
 if not logger.handlers:
     # Add StreamHandler if no configuration is found
     ch = logging.StreamHandler()
@@ -78,16 +77,15 @@ class Evaluator:
         Initializes the evaluation process.
 
         Args:
-            model: The trained model to evaluate.
-            lat_idx: Latitude index of the location being evaluated.
-            lon_idx: Longitude index of the location being evaluated.
-            train_dataloader: DataLoader for the training dataset.
-            test_dataloader: DataLoader for the testing dataset.
-            eval_folder: Directory to save evaluation results.
-            model_folder: Directory where trained models are stored.
-            target_scaler: Scaler used for the target variable.
-            device: Device to run the model on (CPU or GPU).
-            debug: If True, enables debug mode with more verbose logging.
+            train_dataloader (DataLoader): DataLoader for training data.
+            test_dataloader (DataLoader): DataLoader for testing data.
+            lat_idx (int): Latitude index of the location being evaluated.
+            lon_idx (int): Longitude index of the location being evaluated.
+            model (Union[LSTMNetKAN, LSTMNet, GRUNetKAN, GRUNet]): The trained model to evaluate.
+            eval_folder (str): Directory to save evaluation results.
+            target_scaler (MinMaxScaler): Scaler used for inverse transforming target values.
+            device (torch.device): Device to run the model on (CPU/GPU).
+            debug (bool): If True, forces re-evaluation even if results exist.
         """
         self.model = model
         self.lat_idx = lat_idx
@@ -132,7 +130,7 @@ class Evaluator:
         Runs inference over both train and test data loaders and collects scaled predictions
         and true values into self.Y_scaled.
         """
-        logger.info("  Running inference...")
+        logger.debug("  Running inference...")
 
         data_loaders = {
             "train": self.train_loader,
@@ -224,7 +222,7 @@ class Evaluator:
                 "RMSE": np.sqrt(mean_squared_error(y_true_inv, y_pred_inv)),
             }
 
-            logger.info(
+            logger.debug(
                 f"    {split.upper()} Metrics: R2={self.metrics[split]['R2']:.4f}, RMSE={self.metrics[split]['RMSE']:.4f}"
             )
 

@@ -11,8 +11,7 @@ from ..model import LSTMNetKAN, LSTMNet, GRUNetKAN, GRUNet
 
 
 # Configure logging
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
+logger = logging.getLogger()
 if not logger.handlers:
     # Add StreamHandler if no configuration is found
     ch = logging.StreamHandler()
@@ -42,15 +41,15 @@ class Predictor:
         Initializes the predictor with location indices, dataset, model, and settings.
 
         Args:
-            dataset (WetlandSequenceDataset): The dataset for predictions (covers full time range, uses TRAIN scalers).
-            model (LSTMNetKAN): The trained model.
             lat_idx (int): Latitude index of the location to predict.
             lon_idx (int): Longitude index of the location to predict.
-            target_scaler (MinMaxScaler): Scaler used for the target variable. # NOTE: This should be the TRAIN SCALER.
-            save_path (str): Path to save the prediction results.
-            device (torch.device): Device to run the model on (CPU or GPU).
+            dataset (WetlandDataset): Dataset containing windows for prediction.
+            target_scaler (MinMaxScaler): Scaler used for inverse transforming target values.
+            model (Union[LSTMNetKAN, LSTMNet, GRUNetKAN, GRUNet]): The trained model for prediction.
+            save_path (str): File path to save the prediction results.
+            device (torch.device): Device to run the model on (CPU/GPU).
             batch_size (int): Batch size for model inference.
-            debug (bool): If True, enables debug mode with more verbose logging.
+            debug (bool): If True, forces re-prediction even if results exist.
         """
         self.lat_idx = lat_idx
         self.lon_idx = lon_idx
@@ -74,7 +73,7 @@ class Predictor:
         )
 
         if not self.debug and os.path.exists(self.save_path):
-            logger.warning(
+            logger.info(
                 f"Prediction file already exists at {self.save_path}. Skipping."
             )
             return
@@ -85,7 +84,7 @@ class Predictor:
         self._backfill()
         self._save_results()
 
-        logger.info(
+        logger.debug(
             f"Prediction completed for location ({self.lat_idx}, {self.lon_idx})."
         )
 
@@ -93,7 +92,7 @@ class Predictor:
         """
         Runs the trained model on all prediction windows and collects scaled outputs.
         """
-        logger.info("  Running model inference...")
+        logger.debug("  Running model inference...")
 
         # NOTE: The dataset must expose windows (np.ndarray of features)
         windows = self.dataset.windows
@@ -122,7 +121,9 @@ class Predictor:
                 predictions_list.append(pred)
 
         self.pred_scaled = np.concatenate(predictions_list)
-        logger.info(f"  Inference finished. Total predictions: {len(self.pred_scaled)}")
+        logger.debug(
+            f"  Inference finished. Total predictions: {len(self.pred_scaled)}"
+        )
 
     def _post_process_predictions(self):
         """
@@ -149,7 +150,7 @@ class Predictor:
         predictions_rescaled[predictions_rescaled < 0.0003] = 0.0
 
         self.pred_final = predictions_rescaled
-        logger.info(
+        logger.debug(
             "  Predictions successfully rescaled and thresholded using TRAIN SCALER."
         )
 
@@ -162,7 +163,7 @@ class Predictor:
             logger.warning("  No final predictions to backfill.")
             return
 
-        logger.info("  Starting AutoRegressive backfilling...")
+        logger.debug("  Starting AutoRegressive backfilling...")
         try:
             # 1. Prepare data: Replace NaNs with the mean for robust AR fitting
             series = np.nan_to_num(
@@ -177,7 +178,7 @@ class Predictor:
             backcast_len = self.dataset.seq_length - 1
 
             if backcast_len <= 0:
-                logger.debug("  Sequence length is 1, skipping backfill.")
+                logger.warning("  Sequence length is 1, skipping backfill.")
                 return
 
             # 4. Backcast: Predict the first 'backcast_len' values of the full period
@@ -192,7 +193,7 @@ class Predictor:
 
             # 5. Concatenate backcast with main predictions
             self.pred_final = np.concatenate([backcast, self.pred_final])
-            logger.info(f"  Backfill successful. Added {len(backcast)} steps.")
+            logger.debug(f"  Backfill successful. Added {len(backcast)} steps.")
 
         except Exception as e:
             logger.error(
