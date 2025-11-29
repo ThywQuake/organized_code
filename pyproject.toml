@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 # 1. 关键修改: 将 Python 版本降级到 3.10，确保 PyTorch 2.1.2 的兼容性
-requires-python = ">=3.10,<3.12"
+requires-python = ">=3.10"
 dependencies = [
     # 注意: 某些依赖版本可能因 Python 3.10 的兼容性而略微调整
     "dask>=2024.1.0",
@@ -21,13 +21,11 @@ dependencies = [
     "statsmodels>=0.14.0",
     "toml>=0.10.2",
 
-    # 2. 关键修改: 锁定 PyTorch 稳定版本 2.1.2 (CPU)
-    "torch==2.1.2",
-    "torchvision==0.16.2",
-    "torchaudio==2.1.2",
+    # 2. 关键修改: PyTorch (restrict to major version 2.x)
+    "torch>=2.1.2,<3.0",
 
-    # 3. 关键修改: 显式添加 NumPy 约束，强制其版本小于 2.0，以避免 DLL 初始化冲突
-    "numpy<2.0",
+    # 3. 关键修改: 显式添加 NumPy 约束 (restrict to 1.x for compatibility)
+    "numpy>=1.24.0,<2.0",
 
     "tqdm>=4.66.1",
     "typer>=0.9.0",

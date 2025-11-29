@@ -115,3 +115,151 @@ def test_help_command():
     assert "GIEMS-LSTM Training and Prediction CLI" in result.stdout
     assert "train" in result.stdout
     assert "predict" in result.stdout
+    assert "collect" in result.stdout
+
+
+# ==============================================================================
+# Collect Command Tests
+# ==============================================================================
+
+
+@pytest.fixture
+def mock_collect_setup(tmp_path):
+    """
+    Creates a mock setup with temporary folders for collect tests.
+    """
+    pred_folder = tmp_path / "pred"
+    eval_folder = tmp_path / "eval"
+    pred_folder.mkdir()
+    eval_folder.mkdir()
+
+    # Create a mock config instance
+    mock_config_instance = MagicMock()
+
+    # Small 3x3 mask with some True values
+    mock_config_instance.mask = np.array([[True, False, True], [False, True, False], [True, False, True]])
+
+    mock_config_instance.pred_folder = pred_folder
+    mock_config_instance.eval_folder = eval_folder
+
+    return mock_config_instance, pred_folder, eval_folder
+
+
+@patch("giems_lstm.config.Config")
+def test_collect_predictions(MockConfig, mock_collect_setup):
+    """
+    Test collecting prediction results from individual files.
+    """
+    mock_config_instance, pred_folder, eval_folder = mock_collect_setup
+    MockConfig.return_value = mock_config_instance
+
+    # Create some mock prediction files based on the mask
+    # Mask has True at (0,0), (0,2), (1,1), (2,0), (2,2)
+    coords = [(0, 0), (0, 2), (1, 1), (2, 0), (2, 2)]
+    for lat_idx, lon_idx in coords:
+        np.save(
+            pred_folder / f"{lat_idx}_{lon_idx}.npy",
+            {"prediction": np.array([1.0, 2.0, 3.0]), "date": ["2020-01", "2020-02", "2020-03"]},
+        )
+
+    output_file = pred_folder / "test_collected.npy"
+    result = runner.invoke(
+        app,
+        ["collect", "--config", "dummy.toml", "--type", "predictions", "--output", str(output_file)],
+    )
+
+    assert result.exit_code == 0
+    assert "Found 5 result files" in result.stdout
+    assert output_file.exists()
+
+    # Verify the collected data
+    collected = np.load(output_file, allow_pickle=True).item()
+    assert len(collected) == 5
+    assert (0, 0) in collected
+    assert (2, 2) in collected
+
+
+@patch("giems_lstm.config.Config")
+def test_collect_evaluations(MockConfig, mock_collect_setup):
+    """
+    Test collecting evaluation results from individual files.
+    """
+    mock_config_instance, pred_folder, eval_folder = mock_collect_setup
+    MockConfig.return_value = mock_config_instance
+
+    # Create some mock evaluation files
+    coords = [(0, 0), (0, 2), (1, 1)]
+    for lat_idx, lon_idx in coords:
+        np.save(
+            eval_folder / f"{lat_idx}_{lon_idx}.npy",
+            {
+                "Y_inv": {"y_pred_train": np.array([1.0]), "y_true_train": np.array([1.0])},
+                "metrics": {"train": {"R2": 0.95, "RMSE": 0.1}, "test": {"R2": 0.90, "RMSE": 0.15}},
+            },
+        )
+
+    output_file = eval_folder / "test_collected.npy"
+    result = runner.invoke(
+        app,
+        ["collect", "--config", "dummy.toml", "--type", "evaluations", "--output", str(output_file)],
+    )
+
+    assert result.exit_code == 0
+    assert "Found 3 result files" in result.stdout
+    assert "=== Evaluation Summary ===" in result.stdout
+    assert output_file.exists()
+
+
+@patch("giems_lstm.config.Config")
+def test_collect_missing_files(MockConfig, mock_collect_setup):
+    """
+    Test collecting when some files are missing.
+    """
+    mock_config_instance, pred_folder, eval_folder = mock_collect_setup
+    MockConfig.return_value = mock_config_instance
+
+    # Only create 2 of the expected 5 files
+    np.save(pred_folder / "0_0.npy", {"prediction": np.array([1.0])})
+    np.save(pred_folder / "1_1.npy", {"prediction": np.array([2.0])})
+
+    result = runner.invoke(
+        app,
+        ["collect", "--config", "dummy.toml", "--type", "predictions"],
+    )
+
+    assert result.exit_code == 0
+    assert "Found 2 result files, 3 missing" in result.stdout
+
+
+@patch("giems_lstm.config.Config")
+def test_collect_no_files(MockConfig, mock_collect_setup):
+    """
+    Test collecting when no files exist.
+    """
+    mock_config_instance, pred_folder, eval_folder = mock_collect_setup
+    MockConfig.return_value = mock_config_instance
+
+    result = runner.invoke(
+        app,
+        ["collect", "--config", "dummy.toml", "--type", "predictions"],
+    )
+
+    assert result.exit_code == 1
+    assert "No result files found" in result.stdout
+
+
+@patch("giems_lstm.config.Config")
+def test_collect_invalid_type(MockConfig, mock_collect_setup):
+    """
+    Test collecting with invalid result type.
+    """
+    mock_config_instance, pred_folder, eval_folder = mock_collect_setup
+    MockConfig.return_value = mock_config_instance
+
+    result = runner.invoke(
+        app,
+        ["collect", "--config", "dummy.toml", "--type", "invalid"],
+    )
+
+    assert result.exit_code == 1
+    assert "Unknown result type" in result.stdout
