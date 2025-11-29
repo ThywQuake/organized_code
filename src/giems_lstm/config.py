@@ -31,6 +31,7 @@ class TrainConfig:
 class PredictConfig:
     start_date: str
     end_date: str
+    output_file: str
     train_start_date: Optional[str] = None
     train_end_date: Optional[str] = None
 
@@ -78,37 +79,33 @@ class Config:
         self.eval_folder = Path(folder_cfg["eval"])
         self.pred_folder = Path(folder_cfg["pred"])
 
-        # Train / Predict
-        if self.mode == "train":
+        # Train / Predict / Analyze configs
+        if self.mode in ["train", "analyze"]:
             self.train = TrainConfig(**self._raw_config["train"])
-        elif self.mode == "predict":
+
+        if self.mode in ["predict", "analyze"]:
             # In predict mode, we usually need to know the training time range for scaler consistency
             pred_cfg = self._raw_config["predict"]
             train_cfg = self._raw_config.get("train", {})
             self.predict = PredictConfig(
                 start_date=pred_cfg["start_date"],
                 end_date=pred_cfg["end_date"],
+                output_file=pred_cfg["output_file"],
                 train_start_date=train_cfg.get("start_date"),
                 train_end_date=train_cfg.get("end_date"),
             )
-        elif self.mode == "analyze":
-            # In analyze mode, we might have everything from train and predict
-            self.train = TrainConfig(**self._raw_config["train"])
-            pred_cfg = self._raw_config["predict"]
-            train_cfg = self._raw_config.get("train", {})
-            self.predict = PredictConfig(
-                start_date=pred_cfg["start_date"],
-                end_date=pred_cfg["end_date"],
-                train_start_date=train_cfg.get("start_date"),
-                train_end_date=train_cfg.get("end_date"),
-            )
+
         # Sys Mode
         sys_cfg = self._raw_config["sys_mode"]
-        tasks = (
-            sys_cfg["train_tasks_per_thread"]
-            if self.mode == "train"
-            else sys_cfg["predict_tasks_per_thread"]
-        )
+        match self.mode:
+            case "train":
+                tasks = sys_cfg["train_tasks_per_thread"]
+            case "predict":
+                tasks = sys_cfg["predict_tasks_per_thread"]
+            case "analyze":
+                tasks = sys_cfg["collect_tasks_per_thread"]
+            case _:
+                raise ValueError(f"Unknown mode: {self.mode}")
         self.sys = SysConfig(
             debug=sys_cfg["debug"],
             cover_exist=sys_cfg["cover_exist"],

@@ -3,6 +3,7 @@ debug = false
 cover_exist = false
 train_tasks_per_thread = 1000
 predict_tasks_per_thread = 5000
+collect_tasks_per_thread = 500
 
 [folder]
 model = "output/model/F"
@@ -81,3 +82,4 @@ verbose_epoch = 100
 [predict]
 start_date = "1984-01-01"
 end_date = "2024-12-01"
+output_file = "output/F_prediction.nc"

@@ -3,6 +3,7 @@ debug = true
 cover_exist = true
 train_tasks_per_thread = 10
 predict_tasks_per_thread = 10
+collect_tasks_per_thread = 500
 
 [folder]
 model = "output/model/E"
@@ -86,3 +87,4 @@ verbose_epoch = 100
 [predict]
 start_date = "1984-01-01"
 end_date = "2023-12-01"
+output_file = "output/E_debug_prediction.nc"
