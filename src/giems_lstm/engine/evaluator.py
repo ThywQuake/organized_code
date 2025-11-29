@@ -64,13 +64,12 @@ class Evaluator:
 
     def __init__(
         self,
-        model: Union[LSTMNetKAN, LSTMNet, GRUNetKAN, GRUNet],
-        lat_idx: int,
-        lon_idx: int,
         train_dataloader: DataLoader,
         test_dataloader: DataLoader,
+        lat_idx: int,
+        lon_idx: int,
+        model: Union[LSTMNetKAN, LSTMNet, GRUNetKAN, GRUNet],
         eval_folder: str,
-        model_folder: str,
         target_scaler: MinMaxScaler,
         device: torch.device,
         debug: bool = False,
@@ -96,7 +95,6 @@ class Evaluator:
         self.train_loader = train_dataloader
         self.test_loader = test_dataloader
         self.eval_folder = eval_folder
-        self.model_folder = model_folder
         self.scaler = target_scaler
         self.device = device
 
@@ -118,19 +116,7 @@ class Evaluator:
             )
             return
 
-        model_path = os.path.join(
-            self.model_folder, f"{self.lat_idx}_{self.lon_idx}.pth"
-        )
-
-        # Check model existence and load state dict
-        if not os.path.exists(model_path):
-            logger.warning(
-                f"Model for location ({self.lat_idx}, {self.lon_idx}) not found at {model_path}. Skipping evaluation."
-            )
-            return
-
         logger.info(f"Processing location ({self.lat_idx}, {self.lon_idx})...")
-        self.model.load_state_dict(torch.load(model_path, map_location=self.device))
         self.model.eval()
 
         # Run the core evaluation steps

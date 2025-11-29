@@ -4,10 +4,11 @@ from torch.nn.utils import clip_grad_norm_
 import time
 from torch.utils.data import DataLoader
 from torch.optim.lr_scheduler import CosineAnnealingLR
-from typing import Literal, Any, List
+from typing import Any, List
 import logging
 
 from ..model import LSTMNet, GRUNet, LSTMNetKAN, GRUNetKAN
+from ..config import TrainConfig, ModelConfig
 
 # Configure basic logging (can be customized further outside this class)
 logger = logging.getLogger(__name__)
@@ -29,14 +30,12 @@ class Trainer:
         self,
         train_loader: DataLoader,
         test_loader: DataLoader,
-        learn_rate: float,
-        hidden_dim: int,
-        n_layers: int,
-        n_epochs: int,
-        model_type: Literal["GRU", "LSTM", "GRU_KAN", "LSTM_KAN"],
-        verbose_epoch: int,
+        train_config: TrainConfig,
+        model_config: ModelConfig,
+        lat_idx: int,
+        lon_idx: int,
+        model_folder: str,
         device: torch.device,
-        patience: int,
         debug: bool = False,
     ):
         """
@@ -44,19 +43,18 @@ class Trainer:
         """
         self.train_loader = train_loader
         self.test_loader = test_loader
-        self.learn_rate = learn_rate
-        self.hidden_dim = hidden_dim
-        self.n_layers = n_layers
-        self.n_epochs = n_epochs
-        self.model_type = model_type
-        self.verbose_epoch = verbose_epoch
-        self.patience = patience
+        self.learn_rate = train_config.lr
+        self.n_epochs = train_config.n_epochs
+        self.hidden_dim = model_config.hidden_dim
+        self.n_layers = model_config.n_layers
+        self.model_type = model_config.type
+        self.verbose_epoch = train_config.verbose_epoch
+        self.patience = train_config.patience
         self.device = device
+        self.model_folder = model_folder
+        self.lat_idx = lat_idx
+        self.lon_idx = lon_idx
         self.debug = debug
-
-        if self.debug:
-            self.n_epochs = 10
-            logger.setLevel(logging.DEBUG)
 
         # Initialize internal state variables
         self.model = None
@@ -108,7 +106,7 @@ class Trainer:
             self.model.load_state_dict(self.best_model_state)
             logger.info(f"Best model loaded with validation loss: {self.best_loss:.6f}")
 
-        return self.model
+        self._save_model()
 
     def _model_setup(self):
         """
@@ -254,3 +252,11 @@ class Trainer:
             return False
 
         return True
+
+    def _save_model(self):
+        """
+        Saves the trained model to disk.
+        """
+        model_filename = f"{self.model_folder}/{self.lat_idx}_{self.lon_idx}.pth"
+        torch.save(self.model.state_dict(), model_filename)
+        logger.info(f"Model saved to {model_filename}")
