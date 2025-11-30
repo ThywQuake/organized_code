@@ -141,7 +141,7 @@ class Collector:
         else:
             ds = xr.Dataset(
                 {
-                    "predictions": (("time", "lat", "lon"), self.predictions_array),
+                    "fwet": (("time", "lat", "lon"), self.predictions_array),
                 },
                 coords={
                     "time": self.dates,

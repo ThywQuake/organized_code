@@ -2,10 +2,11 @@ import logging
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from giems_lstm.config import Config
-from giems_lstm.engine import Collector
 
 
 def _collect(config_path: str, eval: bool, parallel: int):
+    from giems_lstm.engine import Collector
+
     logger = logging.getLogger()
     config = Config(config_path=config_path, mode="analyze")
     collector = Collector(config=config, eval=eval)
