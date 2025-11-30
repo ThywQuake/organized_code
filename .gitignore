@@ -10,8 +10,9 @@ wheels/
 .venv/
 
 # Data files
-/data/
-/output/
+*.nc
+*.npy
+*.pth
 /figs/
 /.ruff_cache/
 /.pytest_cache/

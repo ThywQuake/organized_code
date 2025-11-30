@@ -1,79 +1,126 @@
+Here is the English transcription of the provided Chinese text.
+
 # GIEMS-MC-LSTM
 
 ## Overview
-The **GIEMS-MC-LSTM** project implements a deep learning model based on Long Short-Term Memory (LSTM) networks, augmented with a KAN-like (Kolmogorov-Arnold Network) linear layer, named `LSTMNetKAN`. This model is designed for large-scale geospatial time-series prediction. The primary application involves predicting wetland dynamics (e.g., `fwet`, the fraction of wet area) using multiple environmental variables.
 
-The training and prediction pipelines are optimized for large-scale computation, supporting parallel processing using Python's `multiprocessing` module, which allows tasks to be split into chunks for distributed execution (e.g., on a Slurm cluster).
+The **GIEMS-MC-LSTM** project implements a deep learning model based on the Long Short-Term Memory network (LSTM), which integrates a KAN (Kolmogorov-Arnold Network)-like linear layer in its output, named `LSTMNetKAN`.
 
-## Model and Data
+This model is specifically designed for **large-scale geospatial time series forecasting**, primarily used to predict wetland dynamics (such as the wetland fraction area `fwet`) utilizing multiple environmental variables.
 
-### Model Architecture
-The core model is `LSTMNetKAN`:
-* **Type:** LSTM combined with a KANLinear output layer.
-* **Example Parameters (from `config/E.toml`):** Hidden Dimension: 384; Number of Layers: 2; Sequence Length: 12.
+## 1\. Data Acquisition
 
-### Input Variables
-The model uses a combination of Time-Series Variables (TVARs) and Constant Variables (CVARs) (configured in `config/E.toml`):
-* **TVARs (Time-Series Variables):** `giems2` (`fwet`), `era5` (`tmp`), `mswep` (`pre`), `gleam` (`sm`), `grace` (`lwe_thickness`).
-* **CVARs (Constant Variables):** `fcti`.
+Before running the model, please ensure you have acquired the following necessary source data. This data usually needs to be processed into NetCDF format and placed in the path specified by the configuration file (e.g., `config/E.toml`).
 
-## Setup and Installation
+Required data sources include:
 
-This project uses **`uv`** for dependency management and building.
+  * **GIEMS** (Global Inundation Extent from Multi-Satellites): Provides the wetland fraction area (`fwet`) as the target variable.
+  * **GRACE** (Gravity Recovery and Climate Experiment): Provides land water equivalent thickness anomaly (`lwe_thickness`).
+  * **GLEAM** (Global Land Evaporation Amsterdam Model): Provides soil moisture (`sm`).
+  * **MSWEP** (Multi-Source Weighted-Ensemble Precipitation): Provides precipitation data (`pre`).
+  * **ERA5** (ECMWF Reanalysis v5): Provides air temperature data (`tmp`).
 
-1.  **Clone the repository.**
-2.  **Install `uv`:** If not already installed, please refer to the official documentation to install `uv`.
-3.  **Install Dependencies and Build:** Use the `uv sync` command to simultaneously install dependencies and build the project into an executable environment.
+> **Note**: Please ensure all data has the shape (time, lat=720, lon=1440) and is at a monthly resolution, with latitude ranging from -90° to 90° and longitude from -180° to 180°.
 
-    ```bash
-    uv sync
-    ```
-4.  **Data Preparation:** Ensure all required NetCDF (`.nc`) data files (TVARs, CVARs, and the wetland `mask`) are placed in the paths specified in your configuration file (e.g., `data/clean/` directory for `config/E.toml`).
+## 2\. Installation and Configuration
 
-## Usage
+This project uses **`uv`** for modern Python dependency management. Please follow the steps below to configure your environment:
 
-After installation and build, you can use the command-line tool **`giems`** to run the training and prediction pipelines.
-
-### 1. Training
+### Step 1: Clone the Repository
 
 ```bash
-giems train [OPTIONS]
-````
-
-| Option              | Description                                                                           | Default         |
-| :------------------ | :------------------------------------------------------------------------------------ | :-------------- |
-| `--config`, `-c`    | Path to the configuration TOML file.                                                  | `config/E.toml` |
-| `--parallel`, `-p`  | Number of local processes to spawn for parallel training. If \>1, it runs all chunks. | `1`             |
-| `--thread-id`, `-t` | Specific chunk ID to run (for Slurm splitting). Ignored if `--parallel` \> 1.         | `0`             |
-| `--debug`, `-d`     | Enable debug mode (e.g., reduces the number of epochs).                               | `False`         |
-
-**Example (Parallel Training):**
-
-```bash
-# Train using 8 CPU/GPU workers based on config/E.toml
-giems train -c config/E.toml -p 8
+git clone https://github.com/thywquake/GIEMS_MC_LSTM.git
+cd GIEMS_MC_LSTM
 ```
 
-### 2\. Prediction
+### Step 2: Create a Virtual Environment
+
+Use `uv` to create a clean virtual environment:
+(If you have not installed `uv`, please go to the [uv official documentation](https://github.com/astral-sh/uv) for installation first)
 
 ```bash
-giems predict [OPTIONS]
+uv venv
 ```
 
-| Option              | Description                                                 | Default         |
-| :------------------ | :---------------------------------------------------------- | :-------------- |
-| `--config`, `-c`    | Path to the configuration TOML file.                        | `config/E.toml` |
-| `--parallel`, `-p`  | Number of local processes to spawn for parallel prediction. | `1`             |
-| `--thread-id`, `-t` | Specific chunk ID to run.                                   | `0`             |
-| `--debug`, `-d`     | Enable debug mode.                                          | `False`         |
+*Activate the virtual environment (depending on your operating system):*
 
-**Example (Slurm/Chunked Prediction):**
+  * Linux/macOS: `source .venv/bin/activate`
+  * Windows: `.venv\Scripts\activate`
+
+### Step 3: Sync Dependencies
+
+Install the project's required dependencies (including PyTorch, NumPy, etc.):
 
 ```bash
-# Predict a specific chunk of tasks (e.g., chunk ID 5)
-giems predict -c config/E.toml -t 5
+uv sync
 ```
 
-## Configuration
+### Step 4: Run Tests
 
-All settings are controlled by a TOML file (e.g., `config/E.toml`).
+Before starting the training, it is recommended to run the test suite to ensure the environment and code are working correctly:
+
+```bash
+pytest tests/
+```
+
+## 3\. Usage
+
+After installation, you can use the command-line tool **`giems`** to perform training, prediction, and result collection.
+
+### 3.1 Training
+
+Start the model training.
+
+```bash
+giems train -c config/E.toml
+```
+
+**⚠️ Important Tip:**
+
+  * It is **not recommended** to use the `--parallel` (or `-p`) parameter during the training phase. Multi-process data loading may lead to training instability or deadlocks. It is suggested to use the default single-process mode or only specify `--thread-id` to run in blocks on a cluster.
+
+| Option           | Description                                                 | Default Value   |
+| :--------------- | :---------------------------------------------------------- | :-------------- |
+| `-c`, `--config` | Path to the configuration file                              | `config/E.toml` |
+| `-d`, `--debug`  | Debug mode (reduces the number of epochs for quick testing) | `False`         |
+
+> **Note**: The `--thread-id` option needs to be used in conjunction with the `**_tasks_per_thread` parameter in the `config` file to enable block-wise training, prediction, and integration in a cluster environment.
+
+### 3.2 Prediction
+
+Perform inference using the trained model.
+
+```bash
+# Example: Use 8 processes for parallel prediction
+giems predict -c config/E.toml -p 8
+```
+
+| Option              | Description                                                            | Default Value   |
+| :------------------ | :--------------------------------------------------------------------- | :-------------- |
+| `-c`, `--config`    | Path to the configuration file                                         | `config/E.toml` |
+| `-p`, `--parallel`  | Number of parallel processes (recommended for prediction acceleration) | `1`             |
+| `-t`, `--thread-id` | Specifies the task block ID to run (for cluster job arrays)            | `0`             |
+
+### 3.3 Result Collection
+
+Collect scattered prediction results (`.npy` files) and merge them into a single NetCDF file.
+
+```bash
+giems collect -c config/E.toml
+```
+
+| Option             | Description                                                                                                    | Default Value   |
+| :----------------- | :------------------------------------------------------------------------------------------------------------- | :-------------- |
+| `-c`, `--config`   | Path to the configuration file                                                                                 | `config/E.toml` |
+| `-p`, `--parallel` | Number of parallel threads used for reading files                                                              | `0`             |
+| `-e`, `--eval`     | Whether to run in evaluation mode (for collecting training metrics, defaults to collecting prediction results) | `False`         |
+
+## Contact
+
+If you encounter any issues during usage or are interested in collaboration, please contact:
+
+📧 **Email**: [thywquake@foxmail.com](mailto:thywquake@foxmail.com)
+
+-----
+
+Would you like me to clarify any specific section, or perhaps help draft an email based on this contact information?
