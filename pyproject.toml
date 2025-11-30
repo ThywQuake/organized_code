@@ -13,7 +13,7 @@ dependencies = [
     # 注意: 某些依赖版本可能因 Python 3.10 的兼容性而略微调整
     "dask>=2024.1.0",
     "ipykernel>=6.29.5",
-    "matplotlib>=3.7.0",
+    "matplotlib<3.7.0",
     "netcdf4>=1.6.5",
     "pandas>=2.1.4",
     "pytest>=7.4.3",
