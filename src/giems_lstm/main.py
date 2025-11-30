@@ -6,6 +6,8 @@ import sys
 import random
 import multiprocessing as mp
 from functools import partial
+from pathlib import Path
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import logging
 
 from typing import TYPE_CHECKING
@@ -15,8 +17,6 @@ if TYPE_CHECKING:
     import numpy as np
     import pandas as pd
     import xarray as xr
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-    from pathlib import Path
 
     from giems_lstm.data import (
         extract_window_data,
@@ -35,24 +35,40 @@ app = typer.Typer(help="GIEMS-LSTM Training and Prediction CLI")
 
 def _init_imports():
     # ruff: noqa: F401
-    import torch
-    import numpy as np
-    import pandas as pd
-    import xarray as xr
-    from concurrent.futures import ThreadPoolExecutor, as_completed
-    from pathlib import Path
+    globals()["torch"] = __import__("torch")
+    globals()["np"] = __import__("numpy")
+    globals()["pd"] = __import__("pandas")
+    globals()["xr"] = __import__("xarray")
 
-    from giems_lstm.data import (
-        extract_window_data,
-        fit_scalers,
-        transform_features,
-        transform_target,
-        WetlandDataset,
-        wetland_dataloader,
-    )
-    from giems_lstm.engine import Trainer, Evaluator, Predictor
-    from giems_lstm.config import Config
-    from giems_lstm.model import LSTMNetKAN
+    globals()["extract_window_data"] = __import__(
+        "giems_lstm.data", fromlist=["extract_window_data"]
+    ).extract_window_data
+    globals()["fit_scalers"] = __import__(
+        "giems_lstm.data", fromlist=["fit_scalers"]
+    ).fit_scalers
+    globals()["transform_features"] = __import__(
+        "giems_lstm.data", fromlist=["transform_features"]
+    ).transform_features
+    globals()["transform_target"] = __import__(
+        "giems_lstm.data", fromlist=["transform_target"]
+    ).transform_target
+    globals()["WetlandDataset"] = __import__(
+        "giems_lstm.data", fromlist=["WetlandDataset"]
+    ).WetlandDataset
+    globals()["wetland_dataloader"] = __import__(
+        "giems_lstm.data", fromlist=["wetland_dataloader"]
+    ).wetland_dataloader
+    globals()["Trainer"] = __import__("giems_lstm.engine", fromlist=["Trainer"]).Trainer
+    globals()["Evaluator"] = __import__(
+        "giems_lstm.engine", fromlist=["Evaluator"]
+    ).Evaluator
+    globals()["Predictor"] = __import__(
+        "giems_lstm.engine", fromlist=["Predictor"]
+    ).Predictor
+    globals()["Config"] = __import__("giems_lstm.config", fromlist=["Config"]).Config
+    globals()["LSTMNetKAN"] = __import__(
+        "giems_lstm.model", fromlist=["LSTMNetKAN"]
+    ).LSTMNetKAN
 
 
 def setup_global_logging(debug: bool, process_type: str):
@@ -484,7 +500,6 @@ def train(
     """
 
     _uniform_entry(debug, parallel, seed)
-
     _train(thread_id, config_path, debug, parallel)
 
 
@@ -507,8 +522,8 @@ def predict(
     """
     Predict GIEMS-LSTM models for all locations specified in the config mask.
     """
-    _uniform_entry(debug, parallel, seed)
 
+    _uniform_entry(debug, parallel, seed)
     _predict(thread_id, config_path, debug, parallel)
 
 
@@ -528,8 +543,8 @@ def collect(
     """
     Collect predicted results into a single NetCDF file.
     """
-    _uniform_entry(debug, parallel, seed)
 
+    _uniform_entry(debug, parallel, seed)
     _collect(config_path, parallel)
 
 
