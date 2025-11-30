@@ -11,6 +11,7 @@ wheels/
 
 # Data files
 /data/
+/data2/
 /output/
 /figs/
 /.ruff_cache/
