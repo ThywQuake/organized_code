@@ -77,10 +77,11 @@ giems train -c config/E.toml
 
   * It is **not recommended** to use the `--parallel` (or `-p`) parameter during the training phase. Multi-process data loading may lead to training instability or deadlocks. It is suggested to use the default single-process mode or only specify `--thread-id` to run in blocks on a cluster.
 
-| Option           | Description                                                 | Default Value   |
-| :--------------- | :---------------------------------------------------------- | :-------------- |
-| `-c`, `--config` | Path to the configuration file                              | `config/E.toml` |
-| `-d`, `--debug`  | Debug mode (reduces the number of epochs for quick testing) | `False`         |
+| Option              | Description                                                 | Default Value   |
+| :------------------ | :---------------------------------------------------------- | :-------------- |
+| `-c`, `--config`    | Path to the configuration file                              | `config/E.toml` |
+| `-d`, `--debug`     | Debug mode (reduces the number of epochs for quick testing) | `False`         |
+| `-t`, `--thread-id` | Specifies the task block ID to run (for cluster job arrays) | `0`             |
 
 > **Note**: The `--thread-id` option needs to be used in conjunction with the `**_tasks_per_thread` parameter in the `config` file to enable block-wise training, prediction, and integration in a cluster environment.
 
