@@ -1,5 +1,3 @@
-Here is the English transcription of the provided Chinese text.
-
 # GIEMS-MC-LSTM
 
 ## Overview
