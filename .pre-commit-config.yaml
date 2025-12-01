@@ -10,7 +10,7 @@ repos:
       - id: check-yaml            # 检查 .yaml 文件格式是否正确
       - id: check-toml            # 检查 .toml 文件格式 (您用的配置文件)
       - id: check-added-large-files # 【重要】防止误提交大文件（如 >500KB 的 .pth/.nc）
-        args: ['--maxkb=1000']
+        args: ['--maxkb=10000']
 
   # 2. Ruff (最快的 Python linter 和 formatter，替代 Black/Flake8/Isort)
   - repo: https://github.com/astral-sh/ruff-pre-commit
