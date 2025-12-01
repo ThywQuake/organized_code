@@ -20,3 +20,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+    from giems_lstm.utils.train import _train
+
+    _train(thread_id=0, config_path="config/F.toml", debug=True, para=1, left=True)

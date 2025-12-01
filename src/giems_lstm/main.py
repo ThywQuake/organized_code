@@ -92,13 +92,19 @@ def train(
     seed: int = typer.Option(
         3407, "--seed", "-s", help="Random seed for reproducibility"
     ),
+    left: bool = typer.Option(
+        False,
+        "--left",
+        "-l",
+        help="If set, this thread will create .pth files first before training starts, then train from ending to beginning. This command will cover --thread-id and --parallel options.",
+    ),
 ):
     """
     Train GIEMS-LSTM models for all locations specified in the config mask.
     """
 
     _uniform_entry(debug, parallel, seed)
-    _train(thread_id, config_path, debug, parallel)
+    _train(thread_id, config_path, debug, parallel, left)
 
 
 @app.command()
